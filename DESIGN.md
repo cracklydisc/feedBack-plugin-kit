@@ -338,6 +338,8 @@ grey-blue that read as broken rather than as unavailable.
 - [ ] no value that is not on the type, space or height scale
 - [ ] every inline label inside `--fbk-label-w`, or promoted to a block label
 - [ ] seen in `assets/gallery.html`, with *No devices* and *Still* both on
+- [ ] every click target at least 11px, measured on a real chart — not on the
+      one you happened to be testing with
 
 ---
 
@@ -357,3 +359,35 @@ forgotten.
 > **Found the hard way.** Riff Repeater showed "Start drill" and "End drill" at
 > the same time, with `endBtn.hidden === true` and `display: inline-flex`
 > computed. The JS was right; the stylesheet was quietly overruling it.
+
+---
+
+## 12. A proportional strip needs hit targets, not just fills
+
+Any control whose geometry means something — a timeline, a waveform, a
+progress map — has two jobs that pull apart, and they need two sets of
+numbers:
+
+- **the fill** has to be honest. A section's width is its share of the song
+  and nothing else, or the thing stops being a map.
+- **the hit target** has to be reachable. Give every item a target at least
+  **11px** wide, grown symmetrically about its own centre, and resolve a click
+  to the target whose **centre is nearest**. A wide item keeps everything
+  except the few pixels closest to a thin neighbour's middle; the thin one
+  becomes clickable. Nothing moves on screen.
+
+> **Found the hard way.** Riff Repeater's timeline draws 21 section markers in
+> a 296px strip. **Nine of them come out under 10px wide**, three under 5px,
+> and the thinnest — `Outro 1`, 1.9px — has fourteen notes in it: a legitimate
+> thing to drill that no one can click. The fill was right; the hit test was
+> the fill.
+
+And a target you cannot see is still no use, so **name what is under the
+cursor**. Sweeping the strip should report whatever the hit test would choose,
+somewhere already on screen, with a visible difference between *would get* and
+*have got* — a dashed border rather than a solid one. That turns a strip you
+have to aim at into one you scrub.
+
+Do not solve this by giving thin items a minimum **visual** width. It fixes
+the clicking and breaks the map: the items no longer sum to the whole, and the
+playhead drifts away from the blocks it is supposed to be inside.
