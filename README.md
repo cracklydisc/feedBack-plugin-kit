@@ -93,6 +93,15 @@ const mode = c.segmented(
 panel.body.appendChild(mode.el);
 mode.set('a');
 
+/*
+ * Policy — what you set once and live with — goes in a fold, so it is in the
+ * panel without being in its default view. The summary keeps the value
+ * visible; DESIGN.md §15 says why that distinction matters more than it looks.
+ */
+const how = c.fold({ title: 'How you drill', summary: '80 → 90 → 100' });
+how.body.appendChild(myLadderRow);
+panel.body.appendChild(how.el);
+
 const off = kit.shortcuts.register(
     [{ key: 'd', description: 'do the thing', handler: doTheThing }],
     { name: 'My Plugin', scope: 'player' },
@@ -120,12 +129,12 @@ cache-busted with `?v=<version>`.
 
 | File | |
 | --- | --- |
-| `DESIGN.md` | **the rules.** Read this one. Three parts: the foundations (the type, space and height scales), the eleven rules, and a component reference that says when *not* to use each class. |
+| `DESIGN.md` | **the rules.** Read this one. Three parts: the foundations (the type, space and height scales), the fifteen rules, and a component reference that says when *not* to use each class. §15 is the one worth reading first: how to spot a control that is in the wrong *tense*. |
 | `assets/gallery.html` | every component in every state, with the two degradation switches |
 | `src/theme.js` | the token bridge: host `--fb-*` roles → `--fbk-*` roles, plus the Layer 2 device recipes the host has proposed but not yet shipped |
 | `assets/kit.css` | the panel, the four control families, meters, badges, key caps. No literal colour, no literal glow, no literal gradient — a test enforces that |
 | `src/panel.js` | the parked panel and the button in the player's plugin-control slot |
-| `src/controls.js` | builders for the four families, plus `num()`, `band()`, readouts and meter rows |
+| `src/controls.js` | builders for the four families, plus `num()`, `band()`, readouts, meter rows and `fold()` |
 | `src/shortcuts.js` | `window.registerShortcut` with teardown, and `taken()` so you can check before choosing a key |
 | `src/settings-mount.js` | the settings-panel retry dance |
 
@@ -135,7 +144,7 @@ cache-busted with `?v=<version>`.
 node --test tests/*.test.js
 ```
 
-24 tests, no dependencies, no build step, no jsdom — the DOM the builders need
+29 tests, no dependencies, no build step, no jsdom — the DOM the builders need
 is a stub small enough to read. What is pinned is the logic: which control
 lights up for which state, that an absent number never colours as a failure,
 that a stepper cannot leave its bounds, and — by reading the source — that no

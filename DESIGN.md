@@ -261,6 +261,7 @@ Every class, its height, its type step, and — the part that matters — when
 | `.fbk-label-inline` | micro, fixed `label-w` | when it fits; never widen the column for one row |
 | `.fbk-push` | `margin-left: auto` | |
 | `.fbk-note` | body step at 11px, dim | **only** to explain a control that is not working |
+| `.fbk-fold` | a heading whose body is shut, value in the head | **only** for policy — never for the job the panel is for |
 
 ## The four families
 
@@ -416,6 +417,41 @@ obvious: **a wrapping flex container breaks the line before it shrinks
 anything.** `flex-shrink: 1` and `min-width: 0` are both powerless while
 `flex-wrap: wrap` is in force. A row that must stay on one line says
 `.fbk-row-nowrap` and puts `min-width: 0` on whichever child gives.
+
+## 15. A control in a HUD must command the passage, not the preference
+
+The hardest defect to see in a panel is a control that is in the wrong
+**tense**. Two shapes of it, and Riff Repeater shipped both:
+
+**A control that reports rather than commands.** Its mode tabs read
+`Section / Phrase / Bars` and looked like the panel's first decision. But the
+`Section` side gated no controls at all, the `Bars` side gated a preference
+that already had a home, and **seven other gestures wrote to the field** — a
+timeline click, a drag, `A`, `B`, the chevrons, `Practice weakest`, a section
+change. A field that seven things overwrite is not taking your instruction; it
+is displaying the last thing you did, in the costume of a button.
+
+**A control that looks per-task and writes a global.** The same panel's
+`Climb`, `Goal` and `Widen` sat two rows under the passage you had just picked,
+so they read as "for this passage" — and every one of them went straight to
+`localStorage`. Lowering the ladder for one solo lowered it for every passage
+of every song, with no signal but a chip that stayed lit.
+
+The tell is the same in both cases and it is not visual, so no amount of
+looking at the panel finds it: **follow the write.** For each control, ask who
+else writes that field, and how far the write reaches. If other gestures write
+it, it is a readout — draw it as one or delete it. If the write outlives the
+task, it is policy — and policy goes in a `fold`.
+
+That is what `fold()` is for, and the reason it keeps the value in its head:
+policy has to stay *visible* (you need to know the ladder before you press
+start) without being *in the way* (you did not open a practice HUD to
+configure it). A fold is the answer to "this belongs here but not now".
+
+Corollary: **one setting, one domain.** The goal percentage had three floors —
+5% in `normalizeGoal`, 10% in the settings page's field, 50% in the panel's
+stepper. Three legal ranges for one number, depending on where you touched it.
+Clamp once, in the layer every writer passes through.
 
 ## 14. Bump the version, and restart the server
 

@@ -271,6 +271,61 @@ test('emphasis is never fully off, so a primary cannot be flat', () => {
  * still render correctly and would silently stop an equipped theme from
  * recolouring it, so behaviour cannot catch it. Looking can.
  */
+// ── fold ─────────────────────────────────────────────────────────────────
+
+test('a fold starts shut, and shut means hidden', () => {
+    const f = controls.fold({ title: 'How you drill', summary: '80 → 90 → 100' });
+    assert.equal(f.isOpen(), false);
+    assert.equal(f.body.hidden, true);
+    // `hidden` and not a class, so section 0's law is what keeps it shut and a
+    // consumer cannot re-open it with a `display`.
+    assert.equal(f.el.dataset.open, 'false');
+    assert.equal(f.head.getAttribute('aria-expanded'), 'false');
+});
+
+test('the head is the target, and it toggles', () => {
+    const f = controls.fold({ title: 'Policy' });
+    // A chevron is a 14px hit area for a job with a whole row available
+    // (DESIGN.md §12), so the click listener has to be on the head itself.
+    assert.equal(f.head.tagName, 'BUTTON');
+    f.head.click();
+    assert.equal(f.isOpen(), true);
+    assert.equal(f.body.hidden, false);
+    assert.equal(f.head.getAttribute('aria-expanded'), 'true');
+    f.head.click();
+    assert.equal(f.isOpen(), false);
+    assert.equal(f.body.hidden, true);
+});
+
+test('a fold can be born open', () => {
+    const f = controls.fold({ title: 'Policy', open: true });
+    assert.equal(f.isOpen(), true);
+    assert.equal(f.body.hidden, false);
+});
+
+test('the summary survives a nullish value as empty, not as "null"', () => {
+    // The summary is built from live settings, so the one thing it must not do
+    // is print the word "null" into a heading.
+    const f = controls.fold({ title: 'Policy', summary: 'x' });
+    const sum = f.head.children[1];
+    f.setSummary(null);
+    assert.equal(sum.textContent, '');
+    f.setSummary(undefined);
+    assert.equal(sum.textContent, '');
+    f.setSummary(0);
+    assert.equal(sum.textContent, '0');
+});
+
+test('the head carries the title, the summary and one chevron, in that order', () => {
+    // Order is the contract the stylesheet reads — the summary is the flexible
+    // child between two fixed ones, which is what makes it ellipsize.
+    const f = controls.fold({ title: 'How you drill', summary: 'goal 85%' });
+    assert.equal(f.head.children.length, 3);
+    assert.equal(f.head.children[0].textContent, 'How you drill');
+    assert.equal(f.head.children[1].textContent, 'goal 85%');
+    assert.equal(f.head.children[2].className, 'fbk-fold-chev');
+});
+
 function source(rel) {
     const src = fs.readFileSync(path.join(import.meta.dirname, rel), 'utf8');
     return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
