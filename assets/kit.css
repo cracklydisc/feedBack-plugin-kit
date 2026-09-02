@@ -19,6 +19,25 @@
  */
 
 /* ─────────────────────────────────────────────────────────────────────────
+ * `hidden` has to actually hide
+ *
+ * The browser's own `[hidden] { display: none }` is a UA rule at specificity
+ * (0,1,0), and so is `.fbk-btn { display: inline-flex }` — and an author rule
+ * beats a UA rule at equal specificity. So every control in this file with an
+ * explicit `display` silently made `el.hidden = true` a no-op, which is how
+ * Riff Repeater ended up showing "Start drill" and "End drill" at the same
+ * time: the JS was correct and the CSS was ignoring it.
+ *
+ * Scoped rather than global — a plugin stylesheet has no business redefining
+ * `[hidden]` for the whole app — but `!important` inside that scope, because
+ * the whole point is to outrank the display rules below.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.fbk-panel[hidden],
+.fbk-panel [hidden],
+.fbk-open-btn[hidden] { display: none !important; }
+
+/* ─────────────────────────────────────────────────────────────────────────
  * The panel
  *
  * Parked top-right, over the player. DESIGN.md §9 has the measured layer map

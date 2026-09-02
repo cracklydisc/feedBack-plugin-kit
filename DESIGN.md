@@ -169,3 +169,22 @@ where not completing costs nothing.
 - [ ] shortcuts registered with `window.registerShortcut`, and checked against
       `window.getAllShortcuts()` first — the player scope already owns Space,
       the arrows, `[`, `]`, `+` and `-`
+
+---
+
+## 11. `hidden` has to actually hide
+
+Any control given an explicit `display` in CSS makes `el.hidden = true` a
+no-op, because the browser's `[hidden] { display: none }` is a UA rule at the
+same specificity as a class selector — and an author rule wins at equal
+specificity.
+
+`assets/kit.css` carries a scoped `[hidden] { display: none !important }` for
+the panel and the rail button, so a consumer can keep using `el.hidden` as the
+one way to show and hide. Do not remove it, and do not toggle visibility with
+`style.display` instead: two mechanisms for one job is how one of them gets
+forgotten.
+
+> **Found the hard way.** Riff Repeater showed "Start drill" and "End drill" at
+> the same time, with `endBtn.hidden === true` and `display: inline-flex`
+> computed. The JS was right; the stylesheet was quietly overruling it.
