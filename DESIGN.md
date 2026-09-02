@@ -8,7 +8,89 @@ A panel in this app is a **heads-up display for something you do with a guitar
 in your hands**, not a preferences sheet in a settings app. Everything here
 follows from that one sentence.
 
+**Look at [`assets/gallery.html`](assets/gallery.html) before reading further.**
+Every component in every state is on one page, and it carries the two buttons
+that prove the rules the prose can only assert: *No devices* strips the glow,
+the gradient and the shadows the way a glow-less shop skin does, and *Still*
+kills the motion. Serve it from any consuming plugin:
+`/api/plugins/<id>/assets/gallery.html`.
+
 ---
+
+# Part 1 — Foundations
+
+Three scales. Nothing in the kit uses a value that is not on one of them, and
+a test reads the stylesheet and fails on any stray pixel.
+
+Before them the CSS used 10, 11, 12, 13 and 20px type with 6, 7, 8, 9, 10, 11,
+12 and 15px spacing, each picked per rule. That is exactly what "approximate"
+looks like from a metre away, and it is invisible while you are writing it and
+obvious the moment you see two rows side by side.
+
+## 1.1 Type — five steps
+
+| Token | Value | For |
+| --- | --- | --- |
+| `--fbk-t-display` | 22 / 800 / −0.01em | the one big number in a panel |
+| `--fbk-t-value` | 16 / 800 / 0, tabular | inline readouts — a stepper's value, a meter's percentage |
+| `--fbk-t-body` | 13 / 500 | prose, a plate's title |
+| `--fbk-t-label` | 11 / 700 / 0.01em | control labels, button text |
+| `--fbk-t-micro` | 10 / 800 / 0.1em, uppercase | section headings, key caps, units |
+
+**No element may invent a sixth step.** A `font` shorthand cannot carry
+letter-spacing, so each step is a pair — `--fbk-t-X` and `--fbk-t-X-track` —
+and a component that needs one sets both. The five `.fbk-t-*` helper classes
+exist for the rare element that is only type.
+
+Two deliberate exceptions, both inside a component rather than free-floating:
+a panel title and a button use the label step at 13/12px because a heading and
+a button are not the same object as a form label, and a readout's unit borrows
+the micro step's size and weight but **not** its 0.1em tracking — at that
+tracking the trailing space pushed the unit away from its number and `85 %`
+read as two things.
+
+## 1.2 Space — a 2px base, six steps
+
+`--fbk-s-1` 2 · `--fbk-s-2` 4 · `--fbk-s-3` 6 · `--fbk-s-4` 10 · `--fbk-s-5` 14
+· `--fbk-s-6` 20
+
+**No margin, padding or gap in the kit is a number.** Every one is
+`var(--fbk-s-N)`.
+
+## 1.3 Height — three, and no others
+
+`--fbk-h-sm` 26 (chip, small button, icon button, meter row) ·
+`--fbk-h-md` 32 (segmented cell, stepper, standard button, slider) ·
+`--fbk-h-lg` 44 (the one primary)
+
+**Every interactive control is exactly one of the three**, and `.fbk-row` has
+`min-height: var(--fbk-h-md)` so a row holding only a label occupies the same
+band as a row holding a stepper. That is where vertical rhythm comes from —
+not from margins.
+
+## 1.4 One label column
+
+`--fbk-label-w` is 62px and **every** inline label shares it. Before that, each
+row's control started wherever its own label happened to end, and four
+different start positions in a 336px panel read as sloppiness even when
+nothing else was wrong.
+
+A label that does not fit becomes a `.fbk-label` **above** its control. It does
+not widen the column. (This is why Riff Repeater's "Playhead" row is labelled
+`Mark`: the longer word did not fit, and shortening the word was the right fix
+rather than moving the column for one row.)
+
+## 1.5 Geometry is allowed to be geometry
+
+A toggle's 13px knob inside its 19px track with a 15px travel, a slider's 6px
+rail and 15px thumb, an 8px meter: those are **one shape each**, not three
+spacing decisions, and putting them on the space scale would make the shape
+wrong at every step but one. The test's allowlist names them, so adding a new
+one is a deliberate act rather than a drift.
+
+---
+
+# Part 2 — The rules
 
 ## 1. One control family per meaning, and the families must not collide
 
@@ -155,6 +237,90 @@ where not completing costs nothing.
 
 ---
 
+# Part 3 — Component reference
+
+Every class, its height, its type step, and — the part that matters — when
+**not** to reach for it.
+
+## Shell
+
+| Class | | |
+| --- | --- | --- |
+| `.fbk-panel` | 336px, `76vh` max, z-150, parked top-right | not for anything that must scroll with the page |
+| `.fbk-head` | sticky, `h-md`-ish, holds `.fbk-title` + `.fbk-subtitle` + `.fbk-x` | the subtitle truncates; do not put a control in it |
+| `.fbk-body` | `s-4`/`s-5` padding | |
+| `.fbk-section` + `.fbk-section-title` + `.fbk-section-rule` | micro step, hairline finishes the row | a section per three-or-more rows; two rows do not need one |
+
+## Structure
+
+| Class | | |
+| --- | --- | --- |
+| `.fbk-row` | `min-height: h-md`, `gap: s-3`, wraps | |
+| `.fbk-row-tight` | no min-height | for a row of `-small` buttons under a primary |
+| `.fbk-label` | micro, block, above its control | when the label is long or the control is full-width |
+| `.fbk-label-inline` | micro, fixed `label-w` | when it fits; never widen the column for one row |
+| `.fbk-push` | `margin-left: auto` | |
+| `.fbk-note` | body step at 11px, dim | **only** to explain a control that is not working |
+
+## The four families
+
+| Class | Height | Question | Not for |
+| --- | --- | --- | --- |
+| `.fbk-seg` / `.fbk-seg-btn` + `.fbk-on` | `h-md` | pick **one** of a small fixed set | more than about five cells — use chips |
+| `.fbk-chips` / `.fbk-chip` + `.fbk-on` `.fbk-now` `.fbk-done` | `h-sm` | pick a **subset** | a mutually-exclusive choice — that is segmented |
+| `.fbk-chips-rail` | | the same, on a track, doubling as progress | an unordered set: a rail implies sequence |
+| `.fbk-toggle` | `h-sm` | a boolean | a choice with a default worth naming — use segmented |
+| `.fbk-stepper` / `.fbk-step` | `h-md` / `h-sm` circles | a number you nudge | a range you sweep — use the slider |
+| `.fbk-stepper-wide` | | the same, with room for a word unit | |
+
+The chips' four states must stay visually ranked: `now` loudest (filled +
+halo), `done` green, `on` an accent outline, unset a quiet outline. A reader
+has to be able to order them at a glance.
+
+## Values
+
+| Class | | |
+| --- | --- | --- |
+| `.fbk-slider` | `h-md`, a real `<input type="range">` | keep it an input — that is what a keyboard operates |
+| `.fbk-readout` + `-value` + `-unit` | value step, tabular | |
+| `.fbk-readout-lg` | display step | **one** per panel, or it stops being the big number |
+| `.fbk-plate` + `-title` + `-meta` | body / label | the facts about whatever is selected |
+| `.fbk-meter` + `[data-band]` + `--fbk-fill` | 8px | measured data only, never selection |
+| `.fbk-meter-row` + `-name` + `-value` | `h-sm` | clickable by default; give it an `onClick` or use a `div` |
+
+## Buttons
+
+| Class | Height | |
+| --- | --- | --- |
+| `.fbk-btn` | `h-md` | the secondary tier — the default |
+| `.fbk-btn-primary` + `.fbk-btn-label` | `h-lg`, full width | **one per panel**, on its own line |
+| `.fbk-btn-stop` | `h-lg`, full width | the primary's inverse: same slot, same size, different hue |
+| `.fbk-btn-small` | `h-sm` | a supporting row |
+| `.fbk-btn-quiet` | | borderless until hover — never for anything you want found |
+
+A primary carrying a status dot and a key cap lays them out
+`space-between`: dot leading, `.fbk-btn-label` centred, cap trailing. Without
+the label class all three huddle in the middle of an empty bar.
+
+## Small parts
+
+| Class | | |
+| --- | --- | --- |
+| `.fbk-badge` / `.fbk-badge-bad` | 20px, `cursor: help` | a caveat, with the sentence in `title`. Never a box of prose |
+| `.fbk-dot` `[data-state=ready\|warn\|off]` | 8px | the state of an input, inside the control that needs it |
+| `.fbk-kbd` | 18px | a shortcut that is really registered with `window.registerShortcut` |
+| `.fbk-flash` | | why something just **failed**. Clears itself |
+| `.fbk-empty` | | nothing to show yet — not an error, so quiet |
+
+## Disabled
+
+One treatment for everything: `opacity: var(--fbk-disabled-opacity)`, no halo,
+no filter. It was per-component before — `opacity: 0.4` here,
+`filter: saturate(0.4)` there — and the disabled primary came out a muddy
+grey-blue that read as broken rather than as unavailable.
+
+---
+
 ## Checklist before shipping a panel
 
 - [ ] exactly one accent-filled control, on its own line
@@ -169,6 +335,9 @@ where not completing costs nothing.
 - [ ] shortcuts registered with `window.registerShortcut`, and checked against
       `window.getAllShortcuts()` first — the player scope already owns Space,
       the arrows, `[`, `]`, `+` and `-`
+- [ ] no value that is not on the type, space or height scale
+- [ ] every inline label inside `--fbk-label-w`, or promoted to a block label
+- [ ] seen in `assets/gallery.html`, with *No devices* and *Still* both on
 
 ---
 

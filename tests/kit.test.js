@@ -284,10 +284,51 @@ test('no literal colour in the recipe table or the stylesheet', () => {
 });
 
 test('every gradient in the stylesheet is built from roles', () => {
-    for (const line of source('../assets/kit.css').split(/\r?\n/)) {
-        if (!/linear-gradient|radial-gradient/.test(line)) continue;
-        assert.ok(/var\(--fbk-/.test(line), `gradient not built from roles: ${line.trim()}`);
+    // Matched over the whole declaration, not per line: the gradients are
+    // wrapped for readability, and a line-oriented check failed on the first
+    // line of a perfectly correct three-line one.
+    const css = source('../assets/kit.css');
+    const gradients = css.match(/(?:linear|radial)-gradient\([^;]*?\)(?=[,;\s])/gs) || [];
+    assert.ok(gradients.length > 0, 'expected at least one gradient to check');
+    for (const g of gradients) {
+        assert.ok(/var\(--fbk-/.test(g),
+            `gradient not built from roles: ${g.replace(/\s+/g, ' ')}`);
     }
+});
+
+/*
+ * The scales exist to be obeyed, so this is the test that they are.
+ *
+ * It counts the bare pixel values in the stylesheet and allows only the ones
+ * that are genuinely geometry rather than spacing: a toggle's 13px knob inside
+ * its 19px track, a slider's 6px rail and 15px thumb, an 8px meter, the
+ * panel's own 336px width and 64px offset. Anything else has to come from
+ * `--fbk-s-*`, `--fbk-h-*` or the type steps — which is exactly the discipline
+ * that was missing when the file used 6, 7, 8, 9, 10, 11, 12 and 15px spacing
+ * side by side.
+ */
+test('no stray pixel values outside the geometry allowlist', () => {
+    const GEOMETRY = new Set([
+        '0px', '1px', '2px', '3px',     // hairlines, insets, tiny radii
+        '5px', '6px', '8px',            // thumb centring offset, slider rail, meter height
+        '13px', '15px', '18px', '19px', // toggle knob/track, slider thumb, kbd
+        '20px',                         // badge
+        '34px', '56px', '76px',         // toggle track, the two readout boxes
+        '72px', '88px',                 // the meter name column, narrow and wide
+        '80px', '336px',                // slider min-width, the panel
+        '64px', '480px',                // the panel's top offset, the breakpoint
+        '10px', '11px', '12px', '13px', '14px', '22px',   // the type steps
+    ]);
+    const css = source('../assets/kit.css');
+    // Only look at property values, and skip anything inside a var() fallback —
+    // those are deliberate copies of the token defaults.
+    const stripped = css.replace(/var\([^)]*\)/g, 'VAR');
+    const offenders = new Set();
+    for (const m of stripped.matchAll(/:\s*[^;{}]*?(\d+px)/g)) {
+        if (!GEOMETRY.has(m[1])) offenders.add(m[1]);
+    }
+    assert.deepEqual([...offenders], [],
+        `these px values are on no scale: ${[...offenders].join(', ')}`);
 });
 
 // ── shortcuts ────────────────────────────────────────────────────────────

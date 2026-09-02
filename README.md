@@ -6,6 +6,17 @@ plugins. **Vendored, not depended on.**
 The rules it enforces are in **[DESIGN.md](DESIGN.md)** — that file is the point
 of this repository. The code just saves typing.
 
+And **[assets/gallery.html](assets/gallery.html)** is how you check the code
+against them: every component in every state on one page, with two buttons that
+prove what the prose can only assert — *No devices* strips the glow, the
+gradient and the shadows the way a glow-less shop skin does, and *Still* kills
+the motion. Nothing may vanish under either. Serve it from any consuming
+plugin, since it is a plain file under `assets/`:
+
+```
+http://localhost:8000/api/plugins/<id>/assets/gallery.html
+```
+
 ---
 
 ## Why it exists
@@ -109,7 +120,8 @@ cache-busted with `?v=<version>`.
 
 | File | |
 | --- | --- |
-| `DESIGN.md` | **the rules.** Read this one. |
+| `DESIGN.md` | **the rules.** Read this one. Three parts: the foundations (the type, space and height scales), the eleven rules, and a component reference that says when *not* to use each class. |
+| `assets/gallery.html` | every component in every state, with the two degradation switches |
 | `src/theme.js` | the token bridge: host `--fb-*` roles → `--fbk-*` roles, plus the Layer 2 device recipes the host has proposed but not yet shipped |
 | `assets/kit.css` | the panel, the four control families, meters, badges, key caps. No literal colour, no literal glow, no literal gradient — a test enforces that |
 | `src/panel.js` | the parked panel and the button in the player's plugin-control slot |
@@ -123,11 +135,14 @@ cache-busted with `?v=<version>`.
 node --test tests/*.test.js
 ```
 
-23 tests, no dependencies, no build step, no jsdom — the DOM the builders need
+24 tests, no dependencies, no build step, no jsdom — the DOM the builders need
 is a stub small enough to read. What is pinned is the logic: which control
 lights up for which state, that an absent number never colours as a failure,
 that a stepper cannot leave its bounds, and — by reading the source — that no
-device is written as a literal.
+device is written as a literal and **no pixel value is off the scales**. That
+last one has an allowlist of the genuine geometry constants (a toggle's 13px
+knob in its 19px track), so adding one is a deliberate act rather than a
+drift.
 
 ## Forward-compatible with the host
 
