@@ -391,3 +391,42 @@ have to aim at into one you scrub.
 Do not solve this by giving thin items a minimum **visual** width. It fixes
 the clicking and breaks the map: the items no longer sum to the whole, and the
 playhead drifts away from the blocks it is supposed to be inside.
+
+---
+
+## 13. The kit is a base layer, and it has to lose every tie
+
+`.fbk-row { flex-wrap: wrap }` in the kit and `.rr-pick { flex-wrap: nowrap }`
+in a consumer are both single-class selectors. Specificity is identical, so
+**source order alone decides** — and the kit's stylesheet is injected by
+`install()` while a plugin's own is injected by the host, which put the kit
+last and made it win.
+
+`install()` **prepends** its `<link>` for that reason. A consumer must be able
+to override the kit at equal specificity, without inventing selectors or
+reaching for `!important`.
+
+> **Found the hard way.** The first override anyone wrote — one row that had
+> to stay on a single line — silently did nothing, three times in a row,
+> through a version bump and two server restarts spent looking for a cache
+> problem that was not there.
+
+And the lesson inside the lesson, worth its own line because it is not
+obvious: **a wrapping flex container breaks the line before it shrinks
+anything.** `flex-shrink: 1` and `min-width: 0` are both powerless while
+`flex-wrap: wrap` is in force. A row that must stay on one line says
+`.fbk-row-nowrap` and puts `min-width: 0` on whichever child gives.
+
+## 14. Bump the version, and restart the server
+
+The host reads `plugin.json` **once at startup**. A plugin's `styles` link is
+cache-busted with `?v=<manifest version>`, so during development:
+
+- the `src/` tree live-edits fine — it is served no-cache with ETags
+- **a stylesheet change needs a version bump AND a server restart**, or the
+  browser is handed the version the server read when it booted
+
+Half an hour was spent on a layout bug that was three separate things wearing
+one appearance: a stale `?v=`, then a real cascade problem, then a test that
+compared the `top` of a zero-height spacer against its siblings and called it
+a wrap. Measure the thing itself, one layer at a time.
