@@ -292,6 +292,14 @@ Every class, its height, its type step, and — the part that matters — when
 | `.fbk-push` | `margin-left: auto` | |
 | `.fbk-note` | body step at 11px, dim | **only** to explain a control that is not working |
 | `.fbk-foot` | sticky bottom bar, collapses when empty | anything that is not the panel's one action, or an alternative to it |
+| `.fbk-rack` | a block: legend, aside, header slot, body | a single control — a rack with one row in it is a heading with extra steps |
+| `.fbk-well` | a slot cut in: darker, rounder, read-only | anything pressable; a well that takes input contradicts §21 |
+| `.fbk-rail` | a derived ladder, three states, a fill | a value the user sets — that is a stepper or a segmented control |
+| `.fbk-led` | a discrete grade bar | a continuous quantity, where it over-promises precision |
+| `.fbk-status` | a line whose chrome scales with urgency | saying "everything is normal" (§16) |
+| `.fbk-list-row` | `h-md`, name + grade + value + a way in | a row that is not pressable — drop the chevron and it is a meter row |
+| `.fbk-strip` | proportional map, A/B handles, tap to pick | a control where position carries no meaning |
+| `.fbk-folded` | the panel at reading size, no buttons inside | anything you have to aim at |
 | `.fbk-fold` | a heading whose body is shut, value in the head | **only** for policy — never for the job the panel is for |
 | `.fbk-field` | label line above a full-width control | when the control is one of a stack of same-shaped rows and the rhythm is worth more |
 | `.fbk-slider-full` | the track at 100%, value on the label line | a slider that is one field among several — keep the row shape there |
@@ -651,6 +659,116 @@ Two conclusions worth more than the classes were:
   alignment advice was overruled by a better rule one version later. A design
   system whose document only ever grows is one where nothing was ever
   measured.
+
+## 20. The rack: a chassis, racks bolted into it, and wells cut out of it
+
+The panel stopped being a list of rows and became a unit. Three primitives, and
+the useful part is that each one says something before you read a word of it.
+
+**A rack** is a block: a legend, a read-only *aside* in the legend's row, a
+*header* slot for one control set once, and a body. Racks are **flat and
+divided by a 1px stroke**, not by air — which is why the space scale got denser
+the moment they arrived. Whitespace between groups had been doing a line's job,
+badly, and paying for it in height.
+
+**A well** is the opposite gesture: a slot cut *into* the chassis, darker and
+rounder than what surrounds it. It means **readout, not control**. That is one
+rule doing two jobs, because the same shape carries urgency — a blocked status
+is cut in and outlined rather than printed on top, so "you cannot start" and
+"this is a number you cannot edit" share a visual grammar instead of each
+inventing one.
+
+**The chassis** is the panel, and the ordering of the four surfaces is the whole
+lighting model: `well 05070C · chassis 0C0F16 · plate 12141C · control 1E222C`.
+Nesting *inward* gets lighter, cutting *in* gets darker, and the radii follow —
+a well is rounder (12) than the chassis it sits in (10), the way a routed slot
+has a tool radius. Shape says depth, so a stroke does not have to.
+
+## 21. A control that derives its value must not accept input
+
+The climb rail shows five rungs, three states, and a fill that says how far up
+you are. It is **not pressable**, and that is the design rather than a
+limitation.
+
+Its rungs come from `start`, `step` and `goal` — three steppers own those. A
+rail you could click would be a **fourth writer of a value three controls
+already write**, which is §15's defect arriving by the front door: seven
+gestures wrote the mode field, and a clickable rail would begin the same story.
+So the rack's rule is stated on the stepper instead: *a stepper is always
+something you set; it never shows a value another control wrote.* Blue on a
+stepper's value means "this one drives the drill".
+
+The corollary is what makes the rail worth having: because it cannot be
+touched, it is free to be **dense**. Five rungs, their labels, their states and
+a progress fill in one 40px row, which no arrangement of five pressable things
+fits.
+
+Two details that are easy to get wrong:
+
+- **Each state is a different KIND of mark**, not the same mark in three hues —
+  cleared is filled, current is a larger filled disc with a halo, ahead is an
+  outline. The rail reads with no colour at all, which is what §3's "semantic
+  colour is not enough" actually asks for.
+- **Progress is a LENGTH.** Without the fill, the only cue is how many dots are
+  green, and counting is the thing a HUD exists to save you from.
+
+And there is deliberately **no caption** warning that the slow rungs
+time-stretch the backing track. The rack is called SPEED, its audience already
+reached for a practice tool, and a permanent warning about a choice somebody
+made on purpose is what §4 exists to prevent.
+
+## 22. Direct manipulation retires four controls
+
+The loop used to be picked by: three mode tabs, two section chevrons, a phrase
+stepper, and two rows of edge steppers. All of them were ways of *spelling out
+in numbers* the thing you wanted to say — "loop from here to here" — and all of
+them are gone, replaced by one strip with two handles.
+
+Three gestures that do not overlap: **tap a block** loops it, **drag a handle**
+moves that edge (snapping to a block edge), **drag across** takes a fresh
+range. The `± steppers` survive for one job the mouse is bad at — moving an
+edge by exactly one unit — and a header switch says which unit.
+
+Two things this cost, both worth knowing before copying it:
+
+- **A drag must not also count as a tap.** Without the slop check every sweep
+  ends by selecting whatever block it finished over.
+- **A handle's drag has to beat the strip's.** The handle sits on top of the
+  blocks, so a grab without a `dragging` guard starts a fresh range underneath
+  the edge you meant to move.
+
+**The hit table pads each block's own edges by half a target** and resolves ties
+by nearest centre. The first version grew each target symmetrically about its
+*centre* instead, which left a dead band wherever an empty block sat between
+two blocks already wider than the minimum: neither neighbour grew, so a 3px gap
+swallowed taps and offered no reason. Padding the edges tiles a small gap and
+still leaves a wide one dead — which is the right pair, because a tap that
+silently jumps an inch away is worse than a tap that plainly does nothing.
+
+## 23. The panel has a reading size, and it is the same object
+
+`foldedStrip` is the panel shrunk to what you can take in while playing: one
+big live number, the climb rail, one loop row. **No buttons in it** — the whole
+block is the target, because the only thing you might want mid-song is "give me
+the rest of it", and aiming at a chevron with a guitar in your hands is not a
+gesture.
+
+It is a **state**, not a second widget. Two widgets would mean two z-indexes,
+two lifecycles, two open/close paths and two places for a bug about which one
+is showing.
+
+The affordance appears when you go looking: hover or focus turns the stroke and
+the grip blue and reveals the key hint in the corner. A permanent chevron would
+be a thing to aim at, and aiming is the gesture this control exists to avoid.
+
+**Where it goes was measured, not chosen.** Any fixed rectangle over a
+multi-row tab view eventually sits in front of the playhead, because the
+playhead changes row — verified by putting a probe top-right (it covered the
+end of the row being played) and bottom-right (it covered the next row). The
+only band carrying no chart is the bottom: 67px of empty canvas plus the
+transport's 74px, which is **141px of a 1433px viewport — about 89px at a 900px
+reference.** A strip taller than that is covering notes, whatever corner it is
+in.
 
 ## 14. Bump the version, and restart the server
 

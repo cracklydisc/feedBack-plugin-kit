@@ -501,6 +501,253 @@ test('the primary loses its margins in the footer', () => {
     assert.match(css, /\.fbk-foot \.fbk-btn-primary[\s\S]{0,80}margin:\s*0/);
 });
 
+// ── the rack ─────────────────────────────────────────────────────────────
+
+test('a rack has a label row, an aside for a value, and a body', () => {
+    const r = controls.rack({ label: 'Loop' });
+    assert.equal(r.el.tagName, 'SECTION');
+    const head = r.el.children[0];
+    assert.equal(head.className, 'fbk-rack-head');
+    assert.equal(r.el.children[1], r.body);
+    r.setAside('INTRO 1 · BEST 58%');
+    assert.equal(head.children[2].textContent, 'INTRO 1 · BEST 58%');
+});
+
+test('the aside prints nothing for a nullish value, not "null"', () => {
+    // It is built from live state every tick, so the one thing it must never
+    // do is put the word "null" in a rack's legend.
+    const r = controls.rack({ label: 'Loop' });
+    for (const v of [null, undefined]) {
+        r.setAside(v);
+        assert.equal(r.el.children[0].children[2].textContent, '');
+    }
+    r.setAside(0);
+    assert.equal(r.el.children[0].children[2].textContent, '0');
+});
+
+// ── the rail ─────────────────────────────────────────────────────────────
+
+test('the rail marks cleared, current and ahead, and fills to the current', () => {
+    const rl = controls.rail();
+    rl.set([
+        { value: 80, state: 'done' },
+        { value: 85, state: 'on' },
+        { value: 90, state: 'next' },
+        { value: 95, state: 'next' },
+        { value: 100, state: 'next' },
+    ]);
+    const dots = rl.el.children[1].children;
+    assert.equal(dots.length, 5);
+    assert.deepEqual([...dots].map((d) => d.dataset.state),
+        ['done', 'on', 'next', 'next', 'next']);
+    // The current rung is index 1 of 5, so the fill is a quarter of the line —
+    // progress as a LENGTH, not as a number of green dots to count.
+    assert.equal(rl.el.children[0].style.getPropertyValue('--fbk-fill'), '25%');
+});
+
+test('the rail rebuilds only when the rungs change shape', () => {
+    const rl = controls.rail();
+    rl.set([{ value: 80, state: 'on' }, { value: 100, state: 'next' }]);
+    const first = rl.el.children[1].children[0];
+    rl.set([{ value: 80, state: 'done' }, { value: 100, state: 'on' }]);
+    // Same nodes, new states: an idle tick has to be a class swap, because
+    // this renders twice a second while a drill runs.
+    assert.equal(rl.el.children[1].children[0], first);
+    assert.equal(first.dataset.state, 'done');
+});
+
+test('an empty rail does not throw and fills nothing', () => {
+    const rl = controls.rail();
+    rl.set(null);
+    assert.equal(rl.el.children[0].style.getPropertyValue('--fbk-fill'), '0%');
+});
+
+// ── the LED meter ────────────────────────────────────────────────────────
+
+test('the LED meter lights a proportion of its cells, in the grade band', () => {
+    const m = controls.ledMeter({ segments: 10 });
+    m.set(40, 'bad');
+    const lit = [...m.el.children].filter((c) => c.dataset.band);
+    assert.equal(lit.length, 4);
+    assert.equal(lit[0].dataset.band, 'bad');
+});
+
+test('an unmeasured value lights nothing rather than the first cell', () => {
+    // `Number(null)` is 0 and 0 would round to zero cells anyway — but 0 with
+    // a band would still paint, so the null check is separate on purpose.
+    const m = controls.ledMeter({ segments: 10 });
+    m.set(60, 'mid');
+    m.set(null, 'mid');
+    assert.equal([...m.el.children].filter((c) => c.dataset.band).length, 0);
+});
+
+// ── the status line ──────────────────────────────────────────────────────
+
+test('a status line says nothing until there is something to say', () => {
+    // "Everything is normal" is a signal that carries nothing (§16) — the
+    // green dot on a primary, again.
+    const st = controls.statusLine();
+    assert.equal(st.el.hidden, true);
+    st.set(null, 'ignored');
+    assert.equal(st.el.hidden, true);
+    st.set('ok', '');
+    assert.equal(st.el.hidden, true);
+});
+
+test('a blocked status carries its own way out', () => {
+    let fixed = 0;
+    const st = controls.statusLine();
+    st.set('blocked', 'Turn on note detection', { label: 'Turn on', onClick: () => { fixed += 1; } });
+    assert.equal(st.el.hidden, false);
+    assert.equal(st.el.dataset.state, 'blocked');
+    const action = st.el.children[2];
+    assert.equal(action.hidden, false);
+    action.click();
+    assert.equal(fixed, 1);
+});
+
+test('a status with no action hides the link rather than showing a dead one', () => {
+    const st = controls.statusLine();
+    st.set('blocked', 'This passage has no notes in it');
+    assert.equal(st.el.children[2].hidden, true);
+});
+
+test('an action is dropped when the state changes to one that has none', () => {
+    // Otherwise the handler from a previous state stays wired to a hidden
+    // button and fires on a keyboard activation.
+    let fired = 0;
+    const st = controls.statusLine();
+    st.set('blocked', 'a', { label: 'Fix', onClick: () => { fired += 1; } });
+    st.set('warn', 'b');
+    st.el.children[2].click();
+    assert.equal(fired, 0);
+});
+
+// ── the range strip ──────────────────────────────────────────────────────
+
+function strip(extra = {}) {
+    const s = controls.rangeStrip({ minHit: 40, ...extra });
+    // The DOM stub reports every element as 100px wide starting at x=0.
+    s.set([
+        { key: 'a', start: 0, end: 10, events: 12, band: 'bad' },
+        { key: 'b', start: 10, end: 20, events: 8, band: 'good' },
+        { key: 'c', start: 20, end: 30, events: 0 },
+    ], 30, { start: 10, end: 20 });
+    return s;
+}
+
+test('a strip draws every block, including the empty one', () => {
+    const s = strip();
+    const blocks = s.el.children[0].children;
+    assert.equal(blocks.length, 3);
+    // Proportional widths, because the strip is a map.
+    assert.equal(blocks[0].style._props ? undefined : undefined, undefined);
+    assert.equal(blocks[2].dataset.empty, 'true');
+    assert.equal(blocks[1].dataset.empty, 'false');
+});
+
+test('an empty block absorbs into a neighbour when narrow, and refuses when wide', () => {
+    /*
+     * §12 from the other end. A thin block must be REACHABLE; a block where
+     * nothing can happen must not be. Both fall out of one rule — the empty
+     * block is simply left out of the hit table — and which one you see
+     * depends on its width, which is the honest outcome:
+     *
+     *   narrow gap  a neighbour's grown target (>= minHit) covers it, so the
+     *               tap lands on the nearest real block
+     *   wide gap    nothing covers it, so the tap does nothing at all
+     *
+     * A tap that silently selects a block an inch away would be worse than a
+     * tap that does nothing, so the second case is the right refusal.
+     */
+    const picks = [];
+    const narrow = controls.rangeStrip({ minHit: 40, onPick: (k) => picks.push(k) });
+    narrow.set([
+        { key: 'a', start: 0, end: 14, events: 12 },
+        { key: 'gap', start: 14, end: 15, events: 0 },
+        { key: 'b', start: 15, end: 30, events: 8 },
+    ], 30, null);
+    narrow.el.fire('pointerdown', { clientX: 48 });   // inside the 1s gap
+    narrow.el.fire('pointerup', { clientX: 48 });
+    assert.equal(picks.length, 1);
+    assert.notEqual(picks[0], 'gap');
+
+    const wide = strip({ onPick: (k) => picks.push(k) });   // 'c' is a third of the strip
+    const before = picks.length;
+    wide.el.fire('pointerdown', { clientX: 95 });
+    wide.el.fire('pointerup', { clientX: 95 });
+    assert.equal(picks.length, before, 'a wide dead zone selects nothing');
+});
+
+test('a count that has not been taken yet is not a count of zero', () => {
+    // `Number(null) === 0`. Reading absent as empty is how a whole strip once
+    // went inert between a song loading and its chart arriving.
+    const s = controls.rangeStrip({});
+    s.set([{ key: 'a', start: 0, end: 10, events: null }], 10, null);
+    assert.equal(s.el.children[0].children[0].dataset.empty, 'false');
+});
+
+test('a drag past the slop takes a range; under it, it is a tap', () => {
+    const drags = [];
+    const picks = [];
+    const s = strip({ onDrag: (a, b) => drags.push([a, b]), onPick: (k) => picks.push(k) });
+
+    s.el.fire('pointerdown', { clientX: 10 });
+    s.el.fire('pointermove', { clientX: 12 });      // inside the 4px slop
+    assert.equal(drags.length, 0);
+    s.el.fire('pointermove', { clientX: 60 });      // past it
+    assert.equal(drags.length, 1);
+    s.el.fire('pointerup', { clientX: 60 });
+    // A drag must NOT also count as a tap, or every sweep would end by
+    // selecting whatever block it finished over.
+    assert.equal(picks.length, 0);
+});
+
+test('a drag hands back its ends in order, whichever way it was swept', () => {
+    const drags = [];
+    const s = strip({ onDrag: (a, b) => drags.push([a, b]) });
+    s.el.fire('pointerdown', { clientX: 80 });
+    s.el.fire('pointermove', { clientX: 20 });      // right to left
+    assert.ok(drags[0][0] < drags[0][1], `got ${drags[0]}`);
+});
+
+test('a handle drag snaps to a block edge and does not start a sweep', () => {
+    const edges = [];
+    const drags = [];
+    const s = strip({ onEdge: (w, t) => edges.push([w, t]), onDrag: (a, b) => drags.push([a, b]) });
+
+    s.handles.start.fire('pointerdown', { clientX: 30, pointerId: 1, stopPropagation() {} });
+    s.handles.start.fire('pointermove', { clientX: 36, pointerId: 1 });
+    assert.equal(edges.length, 1);
+    assert.equal(edges[0][0], 'start');
+    // 36/100 of a 30s song is 10.8s, and the nearest block edge is 10.
+    assert.equal(edges[0][1], 10);
+    // And the strip underneath must not have taken it as a sweep.
+    assert.equal(drags.length, 0);
+});
+
+// ── the folded strip ─────────────────────────────────────────────────────
+
+test('the whole folded strip is the button, and it holds no others', () => {
+    /*
+     * The one thing you might want mid-song is "give me the rest of it", and
+     * aiming at a chevron with a guitar in your hands is not a gesture. So the
+     * block is the target — which only holds if nothing inside it is one.
+     */
+    let opened = 0;
+    const f = controls.foldedStrip({ label: 'OPEN', hint: 'Y', onOpen: () => { opened += 1; } });
+    assert.equal(f.el.tagName, 'BUTTON');
+    assert.equal(f.el.getAttribute('aria-expanded'), 'false');
+    f.el.click();
+    assert.equal(opened, 1);
+    assert.equal(f.body.querySelectorAll('button').length, 0);
+});
+
+test('the folded strip shows its key hint in the cue', () => {
+    const f = controls.foldedStrip({ label: 'OPEN', hint: 'Y' });
+    assert.equal(f.el.children[2].textContent, 'OPEN · Y');
+});
+
 function source(rel) {
     const src = fs.readFileSync(path.join(import.meta.dirname, rel), 'utf8');
     return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -603,6 +850,8 @@ test('no stray pixel values outside the geometry allowlist', () => {
         '20px',                         // badge
         '34px', '56px', '76px',         // toggle track, the two readout boxes
         '72px', '88px',                 // the meter name column, narrow and wide
+        '68px',                         // the list row's name column
+        '28px',                         // the A/B handle's grip width
         '80px', '336px',                // slider min-width, the panel
         '64px', '480px',                // the panel's top offset, the breakpoint
         '10px', '11px', '12px', '13px', '14px', '22px',   // the type steps
