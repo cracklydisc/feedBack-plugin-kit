@@ -576,9 +576,11 @@ test('the rail marks cleared, current and ahead, and fills to the current', () =
         { value: 95, state: 'next' },
         { value: 100, state: 'next' },
     ]);
-    const dots = rl.el.children[1].children;
-    assert.equal(dots.length, 5);
-    assert.deepEqual([...dots].map((d) => d.dataset.state),
+    const cells = rl.el.children[1].children;
+    assert.equal(cells.length, 5);
+    // The dot lives INSIDE its cell: the cell divides the rail into equal
+    // shares so a number lands under its dot, the dot is a fixed circle.
+    assert.deepEqual([...cells].map((c) => c.children[0].dataset.state),
         ['done', 'on', 'next', 'next', 'next']);
     // The current rung is index 1 of 5, so the fill is a quarter of the line —
     // progress as a LENGTH, not as a number of green dots to count.
@@ -588,11 +590,11 @@ test('the rail marks cleared, current and ahead, and fills to the current', () =
 test('the rail rebuilds only when the rungs change shape', () => {
     const rl = controls.rail();
     rl.set([{ value: 80, state: 'on' }, { value: 100, state: 'next' }]);
-    const first = rl.el.children[1].children[0];
+    const first = rl.el.children[1].children[0].children[0];
     rl.set([{ value: 80, state: 'done' }, { value: 100, state: 'on' }]);
     // Same nodes, new states: an idle tick has to be a class swap, because
     // this renders twice a second while a drill runs.
-    assert.equal(rl.el.children[1].children[0], first);
+    assert.equal(rl.el.children[1].children[0].children[0], first);
     assert.equal(first.dataset.state, 'done');
 });
 
@@ -607,7 +609,7 @@ test('a dense ladder keeps every dot and thins only the labels', () => {
     for (let v = 60; v <= 100; v += 2) many.push({ value: v, label: String(v), state: v === 66 ? 'on' : 'next' });
     rl.set(many);
 
-    assert.equal(rl.el.children[1].children.length, 21, 'every dot');
+    assert.equal(rl.el.children[1].children.length, 21, 'every dot has its cell');
     assert.equal(rl.el.dataset.dense, 'true');
     const labelled = [...rl.el.children[2].children].filter((m) => m.textContent).length;
     assert.ok(labelled < 21 && labelled >= 5, `labelled ${labelled} of 21`);
@@ -616,6 +618,21 @@ test('a dense ladder keeps every dot and thins only the labels', () => {
     // playing at" is the question the rail exists to answer.
     const onMark = [...rl.el.children[2].children][many.findIndex((r) => r.state === 'on')];
     assert.equal(onMark.textContent, '66');
+});
+
+test('the rail divides into one equal cell per rung, so numbers sit under dots', () => {
+    /*
+     * Both rows were `space-between`, which aligns the first child's LEFT edge
+     * and the last child's RIGHT edge — so the centres only coincide when every
+     * child is the same width. A dot is 12px (18 when current) and a mark is as
+     * wide as its text, "80" against "100", so the numbers drifted further from
+     * their dots along the rail. Reported exactly that way.
+     */
+    const rl = controls.rail();
+    rl.set([80, 85, 90, 95, 100].map((v) => ({ value: v, label: String(v), state: 'next' })));
+    assert.equal(rl.el.style.getPropertyValue('--fbk-cells'), '5');
+    rl.set([80, 90, 100].map((v) => ({ value: v, label: String(v), state: 'next' })));
+    assert.equal(rl.el.style.getPropertyValue('--fbk-cells'), '3');
 });
 
 test('a short ladder labels every rung', () => {
@@ -928,8 +945,13 @@ test('every custom property the stylesheet reads is one the theme writes', () =>
             .replace(/([a-z])(\d)/g, '$1-$2'));
     }
     for (const slot of Object.keys(theme.recipeDefaults)) written.add('--fbk-' + slot);
-    /* Set per-element by JS rather than on the root — a fill fraction. */
+    /*
+     * Set per-element by JS rather than on the root: a fill fraction, and the
+     * rail's cell count — CSS cannot count children, and a rail whose line has
+     * to end at its outer dots' centres needs to know how many there are.
+     */
     written.add('--fbk-fill');
+    written.add('--fbk-cells');
 
     const unknown = new Set();
     for (const m of css.matchAll(/var\((--fbk-[a-z0-9-]+)/g)) {
