@@ -1056,6 +1056,21 @@ test('a pick of five options wraps, a pick of four does not', () => {
     assert.equal(five.el.className.includes('fbk-seg-wrap'), true, 'five wraps');
     assert.equal(controls.SEG_MAX_INLINE, 4);
 
+    /*
+     * AND FOUR LONG ONES WRAP TOO. A count alone is not enough: a four-way
+     * pick whose labels read `The fret, with the note name beside it` has a
+     * hundred-odd characters in a row with room for thirty-six, and it does
+     * not wrap — it escapes the card. Seen doing exactly that.
+     */
+    const wordy = controls.segmented([
+        { value: 1, label: 'The fret number' },
+        { value: 2, label: 'The note name' },
+        { value: 3, label: 'The fret, with the note name beside it' },
+        { value: 4, label: 'The note name, with the fret beside it' },
+    ], () => {}, 'wordy');
+    assert.equal(wordy.el.className.includes('fbk-seg-wrap'), true);
+    assert.equal(controls.SEG_MAX_CHARS, 36);
+
     /* And it is still ONE pick either way. */
     five.set(3);
     assert.equal(five.node(3).classList.contains('fbk-on'), true);
