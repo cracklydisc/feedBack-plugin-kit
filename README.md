@@ -144,7 +144,7 @@ cache-busted with `?v=<version>`.
 node --test tests/*.test.js
 ```
 
-59 tests, no dependencies, no build step, no jsdom — the DOM the builders need
+62 tests, no dependencies, no build step, no jsdom — the DOM the builders need
 is a stub small enough to read. What is pinned is the logic: which control
 lights up for which state, that an absent number never colours as a failure,
 that a stepper cannot leave its bounds, and — by reading the source — that no

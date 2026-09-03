@@ -501,6 +501,37 @@ test('the primary loses its margins in the footer', () => {
     assert.match(css, /\.fbk-foot \.fbk-btn-primary[\s\S]{0,80}margin:\s*0/);
 });
 
+// ── the stepper's label ──────────────────────────────────────────────────
+
+test('a stepper stacks its label over its value, inside itself', () => {
+    /*
+     * The spec's rule: the label names the unit. Two steppers side by side
+     * with their legends in a separate label column is two rows plus a guess
+     * about which legend belongs to which — and it is what lets `A · ±1 bar`
+     * exist, since no external legend has room for both what the control is
+     * and what one press does.
+     */
+    const st = controls.stepper({ label: 'START', unit: '%', value: 80 });
+    assert.equal(st.el.children.length, 3);
+    const stack = st.el.children[1];
+    assert.equal(stack.className, 'fbk-stepper-stack');
+    assert.equal(stack.children[0].textContent, 'START');
+    assert.equal(stack.children[1].className, 'fbk-readout');
+    assert.equal(st.label, stack.children[0]);
+});
+
+test('a stepper with no label is just a value between two buttons', () => {
+    const st = controls.stepper({ unit: '%', value: 80 });
+    assert.equal(st.label, null);
+    assert.equal(st.el.children[1].children.length, 1);
+});
+
+test('the emph flag marks the value that drives the drill', () => {
+    // On a rack of steppers one holds the live number and the rest are policy.
+    const st = controls.stepper({ label: 'START', emph: true, value: 80 });
+    assert.equal(st.el.children[1].children[1].dataset.emph, '1');
+});
+
 // ── the rack ─────────────────────────────────────────────────────────────
 
 test('a rack has a label row, an aside for a value, and a body', () => {

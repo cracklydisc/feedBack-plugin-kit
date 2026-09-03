@@ -1,5 +1,5 @@
 /*
- * kit 0.10.0 — the four control families, as builders.
+ * kit 0.11.0 — the four control families, as builders.
  *
  * Each returns `{ el, ... }` where `el` is the node to append and the rest is
  * the handle you drive it with. Nothing here holds application state: a
@@ -859,10 +859,35 @@ export function stepper(opts = {}) {
     let value = num(opts.value) ?? 0;
 
     const down = button('fbk-step', '−', downTitle, () => bump(-step));
+
+    /*
+     * THE LABEL NAMES THE UNIT, and it goes INSIDE the stepper.
+     *
+     *     ┌───┬──────────┬───┐
+     *     │ − │  START   │ + │
+     *     │   │   80%    │   │
+     *     └───┴──────────┴───┘
+     *
+     * Two steppers side by side with their legends in a separate label column
+     * is two rows and a guess about which legend belongs to which; stacked
+     * over the value it names, a stepper is one object you can read on its
+     * own. It is also what lets `A · ±1 bar` exist at all — the label carries
+     * both what the control is and what one press does, which no external
+     * legend has room for.
+     *
+     * The `emph` flag paints the value blue: on a rack of steppers, one of
+     * them is the number that drives the drill and the rest are policy.
+     */
+    const stack = el('div', 'fbk-stepper-stack');
+    const legend = opts.label ? el('span', 'fbk-stepper-label', opts.label) : null;
+    if (legend) stack.appendChild(legend);
     const out = readout(unit);
+    if (opts.emph) out.el.dataset.emph = '1';
+    stack.appendChild(out.el);
+
     const up = button('fbk-step', '+', upTitle, () => bump(step));
     wrap.appendChild(down);
-    wrap.appendChild(out.el);
+    wrap.appendChild(stack);
     wrap.appendChild(up);
 
     function bump(by) {
@@ -884,6 +909,8 @@ export function stepper(opts = {}) {
 
     return {
         el: wrap,
+        /** The legend above the value, for a caller that renames the unit. */
+        label: legend,
         get() { return value; },
         set(v) {
             const n = num(v);
