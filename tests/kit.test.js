@@ -1123,6 +1123,44 @@ test('every fallback in the stylesheet matches the recipe it mirrors', () => {
     assert.deepEqual(mismatches, [], mismatches.join('; '));
 });
 
+test('nothing that clips its background uses the background shorthand', () => {
+    /*
+     * THE SHORTHAND THAT UNDOES THE CLIP.
+     *
+     * `background:` resets `background-clip` to `border-box`. The zone blocks
+     * set a transparent border and `background-clip: padding-box` to leave a
+     * gap between neighbours, and every rule painting a band used the
+     * shorthand underneath — so the clip was reset and the gap was never
+     * drawn, on any chart, ever. The custom property carrying its width was
+     * being set correctly the whole time, which is exactly why looking at the
+     * DOM said it worked: I had checked the input, not the paint.
+     *
+     * The rule this enforces: if any rule clips a selector's background, no
+     * rule may paint that selector with the shorthand. Longhands
+     * (`background-color`, `background-image`) do not touch the clip.
+     */
+    const css = source('../assets/kit.css');
+    const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+        .map((m) => ({ sel: m[1].trim(), body: m[2] }));
+
+    /* Every class named by a rule that clips. */
+    const clipped = new Set();
+    for (const r of rules) {
+        if (!/background-clip\s*:/.test(r.body)) continue;
+        for (const cls of r.sel.matchAll(/\.([a-z0-9-]+)/g)) clipped.add(cls[1]);
+    }
+    assert.ok(clipped.size > 0, 'something in the kit clips a background');
+
+    const offenders = [];
+    for (const r of rules) {
+        if (!/(^|[;\s])background\s*:/.test(r.body)) continue;
+        for (const cls of r.sel.matchAll(/\.([a-z0-9-]+)/g)) {
+            if (clipped.has(cls[1])) offenders.push(`${r.sel} paints .${cls[1]} with the shorthand`);
+        }
+    }
+    assert.deepEqual(offenders, [], offenders.join('; '));
+});
+
 test('every custom property the stylesheet reads is one the theme writes', () => {
     /*
      * THE GUARD THAT WAS MISSING, and it cost more than the ones that were
