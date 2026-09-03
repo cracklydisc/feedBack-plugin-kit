@@ -511,12 +511,40 @@ test('a panel has a footer, and it is empty until something is put in it', () =>
     assert.match(css, /\.fbk-foot:empty\s*\{[^}]*padding:\s*0/);
 });
 
-test('the footer comes after the body, so it can stick to the bottom', () => {
-    // `position: sticky; bottom: 0` only pins against the end of the
-    // scrolling box, so DOM order is part of the contract.
+test('the panel is head, body, footer, and a folded slot after them', () => {
+    /*
+     * Order is part of the contract: the body is the one scrolling child
+     * between two fixed ones, and the folded slot comes last because it is a
+     * SIZE of the same panel rather than another region of it — shown by
+     * `fold(true)`, which hides the other three.
+     */
     const p = panel.createPanel({ id: 'test', label: 'Test' });
-    const kids = p.root.children.map((k) => k.className);
-    assert.deepEqual(kids, ['fbk-head', 'fbk-body', 'fbk-foot']);
+    assert.deepEqual(p.root.children.map((k) => k.className),
+        ['fbk-head', 'fbk-body', 'fbk-foot', 'fbk-folded-slot']);
+    assert.equal(p.folded.hidden, true);
+});
+
+test('folding hides the rack and shows the strip — and refuses when empty', () => {
+    const p = panel.createPanel({ id: 'test', label: 'Test' });
+    /*
+     * An empty slot cannot be folded INTO: it would hide every control and
+     * show nothing, which is a panel that has vanished. So `fold` reports what
+     * it actually did rather than assuming it worked.
+     */
+    assert.equal(p.fold(true), false, 'nothing to fold into');
+    assert.equal(p.body.hidden, false);
+
+    p.folded.appendChild(controls.el('div', 'strip'));
+    assert.equal(p.fold(true), true);
+    assert.equal(p.isFolded(), true);
+    assert.equal(p.body.hidden, true);
+    assert.equal(p.foot.hidden, true);
+    assert.equal(p.root.dataset.folded, 'true');
+
+    p.fold(false);
+    assert.equal(p.isFolded(), false);
+    assert.equal(p.body.hidden, false);
+    assert.equal(p.foot.hidden, false);
 });
 
 test('the primary loses its margins in the footer', () => {
