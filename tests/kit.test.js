@@ -1191,6 +1191,18 @@ test('the kit version in index.js is the one in package.json', () => {
     const m = src.match(/export const VERSION = '([^']+)'/);
     assert.ok(m, 'index.js declares a VERSION');
     assert.equal(m[1], pkg.version);
+
+    /*
+     * And the gallery's own label, which is the one a reader SEES. It said
+     * 0.2.0 while the kit was at 0.26.0 — twelve releases — so the page
+     * documenting every component was quietly claiming to document a kit that
+     * had four of them.
+     */
+    const gallery = fs.readFileSync(path.join(import.meta.dirname, '..', 'assets', 'gallery.html'), 'utf8');
+    const shown = [...gallery.matchAll(/kit (\d+\.\d+\.\d+)|>(\d+\.\d+\.\d+) — every/g)]
+        .map((x) => x[1] || x[2]);
+    assert.ok(shown.length >= 2, 'the gallery names a version');
+    for (const v of shown) assert.equal(v, pkg.version, 'gallery version');
 });
 
 function source(rel) {
