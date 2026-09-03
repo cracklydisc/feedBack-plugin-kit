@@ -803,7 +803,31 @@ test('every fallback in the stylesheet matches the recipe it mirrors', () => {
      * (some are deliberately bare); a fallback that disagrees is not.
      */
     const css = source('../assets/kit.css');
-    const recipes = theme.recipeDefaults;
+    /*
+     * ROLES TOO, and leaving them out was the hole this test shipped with.
+     *
+     * The first version compared only `recipeDefaults` — the type, space,
+     * height and device slots. Every COLOUR is a role, and roles are written
+     * with fallbacks in exactly the same way, so when the palette changed
+     * from slate-blue to the neutral rack ramp, **113 role fallbacks kept the
+     * old navy values** and the test that existed to catch precisely this said
+     * nothing. It reported "no drift" while a third of the file was drifted.
+     *
+     * The lesson is smaller than it looks and worth writing down: a test that
+     * enforces a rule on a SUBSET of the thing the rule is about will read as
+     * enforcing it on all of it.
+     */
+    const recipes = { ...theme.recipeDefaults, ...roleFallbacks() };
+
+    /** The role table keyed by the custom property each role is written as. */
+    function roleFallbacks() {
+        const out = {};
+        for (const role of theme.roles) {
+            const propName = '--fbk-' + role.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+            out[propName.replace(/^--fbk-/, '')] = theme.roleDefaults[role];
+        }
+        return out;
+    }
     const mismatches = [];
 
     const seen = new Set();
@@ -883,7 +907,8 @@ test('no stray pixel values outside the geometry allowlist', () => {
         '72px', '88px',                 // the meter name column, narrow and wide
         '68px',                         // the list row's name column
         '28px',                         // the A/B handle's grip width
-        '80px', '336px',                // slider min-width, the panel
+        '7px', '360px',                 // the chassis indicator, the panel
+        '80px',                         // slider min-width
         '64px', '480px',                // the panel's top offset, the breakpoint
         '10px', '11px', '12px', '13px', '14px', '22px',   // the type steps
     ]);
