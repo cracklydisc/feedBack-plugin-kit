@@ -89,6 +89,7 @@ globalThis.window = {
 const controls = await import('../src/controls.js');
 const theme = await import('../src/theme.js');
 const shortcuts = await import('../src/shortcuts.js');
+const panel = await import('../src/panel.js');
 
 // ── bands: the one that bit twice ────────────────────────────────────────
 
@@ -413,6 +414,34 @@ test('a fine pointer keeps the mouse scale', () => {
         globalThis.window.matchMedia = realMM;
         globalThis.document.documentElement = realRoot;
     }
+});
+
+// ── the sticky footer ────────────────────────────────────────────────────
+
+test('a panel has a footer, and it is empty until something is put in it', () => {
+    const p = panel.createPanel({ id: 'test', label: 'Test' });
+    assert.equal(p.foot.className, 'fbk-foot');
+    assert.equal(p.foot.children.length, 0);
+    // `.fbk-foot:empty` collapses it in kit.css, so a panel with no single
+    // action pays nothing — asserted on the source, since the stub has no
+    // cascade.
+    const css = source('../assets/kit.css');
+    assert.match(css, /\.fbk-foot:empty\s*\{[^}]*padding:\s*0/);
+});
+
+test('the footer comes after the body, so it can stick to the bottom', () => {
+    // `position: sticky; bottom: 0` only pins against the end of the
+    // scrolling box, so DOM order is part of the contract.
+    const p = panel.createPanel({ id: 'test', label: 'Test' });
+    const kids = p.root.children.map((k) => k.className);
+    assert.deepEqual(kids, ['fbk-head', 'fbk-body', 'fbk-foot']);
+});
+
+test('the primary loses its margins in the footer', () => {
+    // The footer's padding is the spacing there; a 10px margin inside a 6px
+    // padding is how a pinned bar reads loose at the top and tight below.
+    const css = source('../assets/kit.css');
+    assert.match(css, /\.fbk-foot \.fbk-btn-primary[\s\S]{0,80}margin:\s*0/);
 });
 
 function source(rel) {

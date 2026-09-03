@@ -119,14 +119,38 @@ Four families. There are no others.
 as a game option. Values a stepper cannot reach belong on the plugin's settings
 page, which is a form and should look like one.
 
-## 2. One lit primary, on its own line
+## 2. One lit primary, in the footer, with at most one alternative beside it
 
 Exactly one thing in a panel is accent-filled and glowing: the action the panel
 exists for. Everything else is a quiet secondary or a text button.
 
-It goes on its own line. Sharing a row with two siblings makes it read weaker
-than whatever segmented control sits above it — which is what happened, and
-what a reviewer reported.
+**It goes in the sticky footer, not wherever the controls stop.** Riff
+Repeater put it after the passage picker and before the speed row, which is
+mid-scroll — reported as "does it make sense to have the main action halfway
+down the panel?", and it did not. A panel of this shape is a form with one verb
+at the end of it. If the verb floats in the middle then you configure and then
+hunt, and everything below it reads as though it comes *after* pressing, which
+is backwards. `panel.foot` is sticky rather than fixed, so a short panel keeps
+it in the natural flow and a long one always has it on screen.
+
+**It shares its line with at most one thing, and only with an alternative to
+itself.** The original rule here said "on its own line", after a version that
+put it in a row with two siblings of similar weight — where it read weaker than
+the segmented control above it. That was the right fix for that bug and the
+wrong rule to derive from it. When there genuinely are two ways to start,
+stacking the second one under the primary as a caption does not say *choice*;
+it says *footnote*. Reported, in those words: "that you can start with either
+Start drill or Loop only isn't clear."
+
+So: the primary takes the width it needs and one deliberately quieter
+alternative sits beside it. A glowing primary next to a bordered secondary
+never raises the question the old rule was protecting — "what do I press?" is
+answered by the glow. It answers a different question the caption could not:
+"is there another way?"
+
+Anything that is *not* an alternative to the primary stays out of that row.
+`Clear` used to be there, and it belonged with the loop's own edges (§15's
+proximity argument), not with the button that starts a drill.
 
 When the primary's job inverts (Start → Stop), the replacement takes **the same
 slot and the same size** and only changes hue. The thing you press to stop must
@@ -267,6 +291,8 @@ Every class, its height, its type step, and — the part that matters — when
 | `.fbk-label-inline` | micro, fixed `label-w` | when it fits; never widen the column for one row |
 | `.fbk-push` | `margin-left: auto` | |
 | `.fbk-note` | body step at 11px, dim | **only** to explain a control that is not working |
+| `.fbk-hint` | supporting prose, dimmer and never bold | a panel's default view — put it inside a fold or under a group heading, where verbosity is affordable |
+| `.fbk-foot` | sticky bottom bar, collapses when empty | anything that is not the panel's one action, or an alternative to it |
 | `.fbk-fold` | a heading whose body is shut, value in the head | **only** for policy — never for the job the panel is for |
 | `.fbk-field` | label line above a full-width control | when the control is one of a stack of same-shaped rows and the rhythm is worth more |
 | `.fbk-slider-full` | the track at 100%, value on the label line | a slider that is one field among several — keep the row shape there |
