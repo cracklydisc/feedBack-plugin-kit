@@ -904,6 +904,41 @@ test('every fallback in the stylesheet matches the recipe it mirrors', () => {
     assert.deepEqual(mismatches, [], mismatches.join('; '));
 });
 
+test('every custom property the stylesheet reads is one the theme writes', () => {
+    /*
+     * THE GUARD THAT WAS MISSING, and it cost more than the ones that were
+     * there.
+     *
+     * `propFor` turned `surface2` into `--fbk-surface2` while the stylesheet
+     * read `--fbk-surface-2` — thirty times. So the control tone was the
+     * hardcoded fallback in every rule that used it, always, whatever the
+     * palette said. It survived a palette rewrite, a 113-value fallback
+     * alignment and the mirror test, because all of those compare VALUES and
+     * none of them asks whether the property is ever set.
+     *
+     * A misspelled custom property is silent by design: `var()` just uses the
+     * fallback. That makes it exactly the class of mistake a test has to
+     * catch, because looking at the screen cannot.
+     */
+    const css = source('../assets/kit.css');
+    const written = new Set();
+    for (const role of theme.roles) {
+        written.add('--fbk-' + role
+            .replace(/[A-Z]/g, (ch) => '-' + ch.toLowerCase())
+            .replace(/([a-z])(\d)/g, '$1-$2'));
+    }
+    for (const slot of Object.keys(theme.recipeDefaults)) written.add('--fbk-' + slot);
+    /* Set per-element by JS rather than on the root — a fill fraction. */
+    written.add('--fbk-fill');
+
+    const unknown = new Set();
+    for (const m of css.matchAll(/var\((--fbk-[a-z0-9-]+)/g)) {
+        if (!written.has(m[1])) unknown.add(m[1]);
+    }
+    assert.deepEqual([...unknown], [],
+        `the stylesheet reads properties nothing sets: ${[...unknown].join(', ')}`);
+});
+
 test('no literal colour in the recipe table or the stylesheet', () => {
     for (const rel of ['../src/theme.js', '../assets/kit.css']) {
         const hex = source(rel).match(/#[0-9a-fA-F]{3,8}/g) || [];
@@ -939,7 +974,7 @@ test('no stray pixel values outside the geometry allowlist', () => {
     const GEOMETRY = new Set([
         '0px', '1px', '2px', '3px',     // hairlines, insets, tiny radii
         '5px', '6px', '8px',            // thumb centring offset, slider rail, meter height
-        '13px', '15px', '18px', '19px', // toggle knob/track, slider thumb, kbd
+        '13px', '15px', '17px', '18px', '19px', '20px',  // toggle knob/track, the − + glyph, kbd, slider thumb
         '20px',                         // badge
         '34px', '56px', '76px',         // toggle track, the two readout boxes
         '72px', '88px',                 // the meter name column, narrow and wide
