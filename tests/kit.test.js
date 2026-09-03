@@ -935,7 +935,7 @@ test('a handle drag does not also start a sweep', () => {
 
 // ── the folded strip ─────────────────────────────────────────────────────
 
-test('the whole folded strip is the button, and it holds no others', () => {
+test('the folded strip is one target, and it holds no other', () => {
     /*
      * The one thing you might want mid-song is "give me the rest of it", and
      * aiming at a chevron with a guitar in your hands is not a gesture. So the
@@ -943,16 +943,55 @@ test('the whole folded strip is the button, and it holds no others', () => {
      */
     let opened = 0;
     const f = controls.foldedStrip({ label: 'OPEN', hint: 'Y', onOpen: () => { opened += 1; } });
-    assert.equal(f.el.tagName, 'BUTTON');
-    assert.equal(f.el.getAttribute('aria-expanded'), 'false');
-    f.el.click();
+
+    /*
+     * A LAYER, not one big button — see the note on the builder. The block
+     * still behaves as a single target, and this asserts the BEHAVIOUR rather
+     * than the tag: pressing the hit opens, and the readouts hold nothing
+     * pressable.
+     */
+    assert.equal(f.el.tagName, 'DIV');
+    assert.equal(f.hit.tagName, 'BUTTON');
+    assert.equal(f.hit.getAttribute('aria-expanded'), 'false');
+    f.hit.click();
     assert.equal(opened, 1);
     assert.equal(f.body.querySelectorAll('button').length, 0);
+
+    /* No `onEnd`, no stop control — the strip does not invent one. */
+    assert.equal(f.end, null);
+});
+
+test('the folded strip carries a way out when given one', () => {
+    /*
+     * WHY THIS EXISTS: hiding the detector's own drill HUD takes away the only
+     * one-press way to end a running drill, so the strip has to carry it. It
+     * is a SIBLING of the full-area target rather than a child, because a
+     * button inside a button does not fire — which is the whole reason the
+     * strip stopped being a button.
+     */
+    let ended = 0;
+    let opened = 0;
+    const f = controls.foldedStrip({
+        label: 'OPEN',
+        onOpen: () => { opened += 1; },
+        onEnd: () => { ended += 1; },
+        endLabel: 'End',
+    });
+    assert.ok(f.end, 'a stop control');
+    assert.equal(f.end.tagName, 'BUTTON');
+    assert.equal(f.end.title, 'End');
+
+    /* Pressing it must NOT also open the panel. */
+    f.end.click();
+    assert.equal(ended, 1);
+    assert.equal(opened, 0, 'the stop does not bubble into the open');
 });
 
 test('the folded strip shows its key hint in the cue', () => {
     const f = controls.foldedStrip({ label: 'OPEN', hint: 'Y' });
-    assert.equal(f.el.children[2].textContent, 'OPEN · Y');
+    const cue = [...f.el.children].find((c) => c.className === 'fbk-folded-cue');
+    assert.ok(cue, 'a cue');
+    assert.equal(cue.textContent, 'OPEN · Y');
 });
 
 function source(rel) {
