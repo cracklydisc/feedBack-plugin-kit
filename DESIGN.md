@@ -291,7 +291,6 @@ Every class, its height, its type step, and — the part that matters — when
 | `.fbk-label-inline` | micro, fixed `label-w` | when it fits; never widen the column for one row |
 | `.fbk-push` | `margin-left: auto` | |
 | `.fbk-note` | body step at 11px, dim | **only** to explain a control that is not working |
-| `.fbk-hint` | supporting prose, dimmer and never bold | a panel's default view — put it inside a fold or under a group heading, where verbosity is affordable |
 | `.fbk-foot` | sticky bottom bar, collapses when empty | anything that is not the panel's one action, or an alternative to it |
 | `.fbk-fold` | a heading whose body is shut, value in the head | **only** for policy — never for the job the panel is for |
 | `.fbk-field` | label line above a full-width control | when the control is one of a stack of same-shaped rows and the rhythm is worth more |
@@ -575,14 +574,28 @@ less. It had less. Moving it to the front of the row fixed the other half of
 the same problem — an affordance at the far end of a 296px row, away from the
 text it belongs to.
 
-**Use fewer alignments.** Three values in the panel had three right edges:
-−14px (the body padding, correct), −26px and −59px. The −26 was the fold's
-summary, short by exactly the trailing chevron's width plus its gap — so
-moving the chevron to the front put that value on the same pixel as the
-slider's readout. The −59 is inside the plate, between two chevrons, and
-cannot reach the edge; that one is structural and stays.
+**Use fewer alignments — and then a stronger rule overruled it.** Three
+values in the panel had three right edges: −14px (the body padding, correct),
+−26px and −59px, and moving the fold's chevron to the front put the −26 on the
+slider readout's pixel.
 
-Getting the −26 to actually become −14 cost two CSS facts worth keeping:
+**0.8.0 reversed that, and the reversal is the more interesting half.** The
+reviewer's note was that `CHART` on the left and `100 %` on the right read as
+two separate things with the track stranded underneath. They were: right-
+aligning a value puts the panel's whole width between it and the word that
+says what it is. *Combine labels and values* is the more specific rule and it
+wins — `CHART 100 %` as one unit, then the track. The fold's summary moved
+next to its title for the same reason.
+
+So the panel now has **more** shared alignment, not less: every label, every
+value and every control starts from the left edge, and nothing is pushed to
+the right to satisfy a symmetry no reader was looking for. Which is the honest
+lesson about a book of rules — "fewer alignments" was describing a symptom of
+a layout with no system, and once there is a system the rule it was standing
+in for is a different one.
+
+Two CSS facts were paid for on the way, and they are worth keeping even though
+the layout they were bought for is gone:
 
 - **A `<button>` shrink-to-fits even with `display: flex`.** Its `width: auto`
   is fit-content and not fill-available, because the UA treats it as an atomic
@@ -603,6 +616,41 @@ labels rather than being absorbed into their controls, because each one names
 a *group* of controls rather than a single value — "labels are a last resort"
 is about a label on one field, and applying it to a group heading just
 deletes the structure.
+
+## 19. A class that lasted one version, and why withdrawing it is the system
+
+0.7.0 added two things this document now has to explain the absence of.
+
+`.fbk-field` — a label line above a full-width control — existed to widen a
+slider that its own value was squeezing. It worked. It also cost a row and put
+the label at the opposite end of that row from the value it names. Putting the
+value **beside its label** does the widening on one row, so the field was
+solving a real problem with the second-cheapest answer. Withdrawn.
+
+`.fbk-hint` — supporting prose, dim and never bold — was added for a
+`Widen when clean` toggle nobody could interpret, and the reasoning was "this
+lives inside a fold that is shut by default, so verbosity costs nothing". The
+report on it was one sentence: *dead space; nobody playing a music game reads
+paragraphs of explanation every time.* Withdrawn, and replaced by a `?` badge
+with the sentence in its tooltip.
+
+**§4 had already said this.** "No paragraph of explanation, and no box drawn
+to hold one" was in this file before the hint was written, and the hint was an
+argument for an exception. The exception was wrong, and it was wrong in the way
+exceptions usually are: the fold made the prose *cheap*, which is a different
+thing from making it *wanted*.
+
+Two conclusions worth more than the classes were:
+
+- **A class with no consumer is a class nobody has tested.** Both of these had
+  exactly one, and when that consumer moved off, the right move was deletion
+  rather than keeping them "in case". A kit that accumulates is a kit whose
+  rules stop being readable.
+- **When a rule here loses an argument, amend it in place and say so.** §2 was
+  amended when the primary gained a neighbour, §18 records that its own
+  alignment advice was overruled by a better rule one version later. A design
+  system whose document only ever grows is one where nothing was ever
+  measured.
 
 ## 14. Bump the version, and restart the server
 

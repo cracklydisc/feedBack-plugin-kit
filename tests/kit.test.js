@@ -338,38 +338,37 @@ test('the chevron LEADS, and the summary is the last cell', () => {
 
 // ── slider shapes ────────────────────────────────────────────────────────
 
-test('a row slider is a row; a wide slider is a field with a label line', () => {
-    const row = controls.slider({ unit: '%' });
-    assert.equal(row.el.className, 'fbk-row');
-    assert.equal(row.head, null);
-    assert.equal(row.input.className, 'fbk-slider');
-
-    const wide = controls.slider({ wide: true, label: 'Chart', unit: '%' });
-    assert.equal(wide.el.className, 'fbk-field');
-    // `flex: none; width: 100%` lives on the class, so a flex parent cannot
-    // shrink the track back to its content — which is the whole point.
-    assert.equal(wide.input.className, 'fbk-slider fbk-slider-full');
-    assert.equal(wide.head.className, 'fbk-field-head');
-    assert.equal(wide.head.children[0].textContent, 'Chart');
-    assert.equal(wide.head.children[1].className, 'fbk-readout');
+test('a slider is label, value, then track — in that order', () => {
+    /*
+     * The order is the whole design. Value AFTER the track leaves the track
+     * 42% of the row; a label line ABOVE it costs a row and separates the
+     * label from its own value. Beside the label, they read as one thing and
+     * the track takes the rest.
+     */
+    const sl = controls.slider({ label: 'Chart', unit: '%' });
+    assert.equal(sl.el.className, 'fbk-row fbk-slider-row');
+    const kids = sl.el.children;
+    assert.equal(kids.length, 3);
+    assert.equal(kids[0].textContent, 'Chart');
+    assert.equal(kids[1].className, 'fbk-readout');
+    assert.equal(kids[2], sl.input);
+    // The label drops the fixed 62px column: a 40px word in it would put 22px
+    // of nothing between the label and the value it belongs to.
+    assert.match(kids[0].className, /fbk-slider-label/);
 });
 
-test('the wide slider puts the track after the label line, not inside it', () => {
-    // Order is the contract: the head is one child of the field and the input
-    // is the next, so the track spans the field rather than a flex cell.
-    const wide = controls.slider({ wide: true, label: 'Chart' });
-    assert.equal(wide.el.children.length, 2);
-    assert.equal(wide.el.children[0], wide.head);
-    assert.equal(wide.el.children[1], wide.input);
+test('a slider with no label is value then track', () => {
+    const sl = controls.slider({ unit: '%' });
+    assert.equal(sl.label, null);
+    assert.equal(sl.el.children.length, 2);
+    assert.equal(sl.el.children[1], sl.input);
 });
 
-test('both shapes still refuse a nullish value', () => {
-    for (const w of [false, true]) {
-        const sl = controls.slider({ wide: w, label: 'x', min: 0, max: 100 });
-        sl.input.value = '40';
-        sl.set(null);
-        assert.equal(sl.input.value, '40', `wide=${w}`);
-    }
+test('a slider refuses a nullish value rather than jumping to its minimum', () => {
+    const sl = controls.slider({ label: 'x', min: 0, max: 100 });
+    sl.input.value = '40';
+    sl.set(null);
+    assert.equal(sl.input.value, '40');
 });
 
 // ── the touch scale ──────────────────────────────────────────────────────
