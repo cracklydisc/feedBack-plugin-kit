@@ -196,7 +196,14 @@
     display: flex;
     align-items: center;
     gap: var(--fbk-s-3, 6px);
-    width: 100%;
+    /*
+     * NO `width: 100%`. A fixed-width box with negative horizontal margins
+     * SHIFTS rather than widens — the head ended up 6px left of its parent
+     * and 6px short on the right, which bled the hover surface out of one
+     * side only and left the summary 12px inside the alignment it was moved
+     * to join. `display: flex` is already block-level, so `width: auto`
+     * fills the parent and the negative margins can do what they are for.
+     */
     min-height: var(--fbk-h-sm, 26px);
     padding: 0;
     background: none;
