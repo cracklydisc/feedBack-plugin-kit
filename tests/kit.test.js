@@ -1264,6 +1264,27 @@ test('pressing a control does not scroll the panel, and inputs keep their defaul
     for (const tag of ['INPUT', 'SELECT', 'TEXTAREA']) {
         assert.equal(fire(tag), false, tag + ' is operated through it');
     }
+
+    /*
+     * AND A LABEL, which is the correction this guard needed a version later.
+     *
+     * A `.fbk-toggle` is a label wrapping a checkbox, so a press lands on the
+     * label or on the track span inside it — and cancelling the default there
+     * is exactly how a label stops ticking its checkbox. Reported as "the
+     * switch does not change state": the same mistake the guard exists to
+     * prevent, arriving from the other side.
+     */
+    assert.equal(fire('LABEL'), false, 'a label is part of its control');
+
+    /* A span INSIDE a label too — the toggle's own track is one. */
+    const inside = {
+        tagName: 'SPAN',
+        closest: (sel) => (sel.includes('label') ? { tagName: 'LABEL' } : null),
+        prevented: false,
+        preventDefault() { this.prevented = true; },
+    };
+    p2.body.fire('mousedown', { target: inside, preventDefault: () => { inside.prevented = true; } });
+    assert.equal(inside.prevented, false, 'and so is anything inside one');
 });
 
 function source(rel) {
