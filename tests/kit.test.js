@@ -326,6 +326,86 @@ test('the head carries the title, the summary and one chevron, in that order', (
     assert.equal(f.head.children[2].className, 'fbk-fold-chev');
 });
 
+// ── slider shapes ────────────────────────────────────────────────────────
+
+test('a row slider is a row; a wide slider is a field with a label line', () => {
+    const row = controls.slider({ unit: '%' });
+    assert.equal(row.el.className, 'fbk-row');
+    assert.equal(row.head, null);
+    assert.equal(row.input.className, 'fbk-slider');
+
+    const wide = controls.slider({ wide: true, label: 'Chart', unit: '%' });
+    assert.equal(wide.el.className, 'fbk-field');
+    // `flex: none; width: 100%` lives on the class, so a flex parent cannot
+    // shrink the track back to its content — which is the whole point.
+    assert.equal(wide.input.className, 'fbk-slider fbk-slider-full');
+    assert.equal(wide.head.className, 'fbk-field-head');
+    assert.equal(wide.head.children[0].textContent, 'Chart');
+    assert.equal(wide.head.children[1].className, 'fbk-readout');
+});
+
+test('the wide slider puts the track after the label line, not inside it', () => {
+    // Order is the contract: the head is one child of the field and the input
+    // is the next, so the track spans the field rather than a flex cell.
+    const wide = controls.slider({ wide: true, label: 'Chart' });
+    assert.equal(wide.el.children.length, 2);
+    assert.equal(wide.el.children[0], wide.head);
+    assert.equal(wide.el.children[1], wide.input);
+});
+
+test('both shapes still refuse a nullish value', () => {
+    for (const w of [false, true]) {
+        const sl = controls.slider({ wide: w, label: 'x', min: 0, max: 100 });
+        sl.input.value = '40';
+        sl.set(null);
+        assert.equal(sl.input.value, '40', `wide=${w}`);
+    }
+});
+
+// ── the touch scale ──────────────────────────────────────────────────────
+
+test('a coarse pointer gets the bigger height scale', () => {
+    // The scale is swapped rather than individual controls grown: grow one
+    // twice and a row has a 44px stepper beside a 26px chip with no shared
+    // band left (DESIGN.md §17).
+    const seen = {};
+    const realRoot = globalThis.document.documentElement;
+    globalThis.document.documentElement = {
+        style: { setProperty: (k, v) => { seen[k] = v; }, removeProperty: () => {} },
+    };
+    const realMM = globalThis.window.matchMedia;
+    globalThis.window.matchMedia = (q) => ({ matches: /pointer: coarse/.test(q) });
+    try {
+        theme.follow();
+        assert.equal(seen['--fbk-h-sm'], '32px');
+        assert.equal(seen['--fbk-h-md'], '44px');
+        assert.equal(seen['--fbk-h-lg'], '52px');
+    } finally {
+        theme.unfollow();
+        globalThis.window.matchMedia = realMM;
+        globalThis.document.documentElement = realRoot;
+    }
+});
+
+test('a fine pointer keeps the mouse scale', () => {
+    const seen = {};
+    const realRoot = globalThis.document.documentElement;
+    globalThis.document.documentElement = {
+        style: { setProperty: (k, v) => { seen[k] = v; }, removeProperty: () => {} },
+    };
+    const realMM = globalThis.window.matchMedia;
+    globalThis.window.matchMedia = () => ({ matches: false });
+    try {
+        theme.follow();
+        assert.equal(seen['--fbk-h-md'], '32px');
+        assert.equal(seen['--fbk-h-lg'], '44px');
+    } finally {
+        theme.unfollow();
+        globalThis.window.matchMedia = realMM;
+        globalThis.document.documentElement = realRoot;
+    }
+});
+
 function source(rel) {
     const src = fs.readFileSync(path.join(import.meta.dirname, rel), 'utf8');
     return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');

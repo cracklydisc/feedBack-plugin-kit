@@ -68,6 +68,12 @@ read as two things.
 band as a row holding a stepper. That is where vertical rhythm comes from —
 not from margins.
 
+**On a coarse pointer the whole scale changes** — 32 · 44 · 52 — because a
+fingertip is a different physical problem from a mouse, not the same one
+larger. `src/theme.js` swaps it, so a consumer never asks: reference `h-md`
+and the control is 32px under a mouse and 44px under a thumb. §17 has the
+reasoning and the reason it is a scale swap rather than a per-control one.
+
 ## 1.4 One label column
 
 `--fbk-label-w` is 62px and **every** inline label shares it. Before that, each
@@ -262,6 +268,8 @@ Every class, its height, its type step, and — the part that matters — when
 | `.fbk-push` | `margin-left: auto` | |
 | `.fbk-note` | body step at 11px, dim | **only** to explain a control that is not working |
 | `.fbk-fold` | a heading whose body is shut, value in the head | **only** for policy — never for the job the panel is for |
+| `.fbk-field` | label line above a full-width control | when the control is one of a stack of same-shaped rows and the rhythm is worth more |
+| `.fbk-slider-full` | the track at 100%, value on the label line | a slider that is one field among several — keep the row shape there |
 
 ## The four families
 
@@ -452,6 +460,68 @@ Corollary: **one setting, one domain.** The goal percentage had three floors —
 5% in `normalizeGoal`, 10% in the settings page's field, 50% in the panel's
 stepper. Three legal ranges for one number, depending on where you touched it.
 Clamp once, in the layer every writer passes through.
+
+## 16. A signal has to survive its own background
+
+A hue is only a signal against a ground it contrasts with, and the ground a
+panel most often forgets is **its own filled primary**.
+
+Riff Repeater's start button carried an 8px status dot in
+`--fbk-good` green and a key cap on `--fbk-bg / 0.35`, both on a saturated sky
+fill. Measured against that fill the cap's plate came out at **1.05 : 1**, so
+what reached the screen was white letters floating in nothing at 10px; the
+green dot sat at a similar luminance to the cyan under it and read as a
+smudge. Reported, accurately, as "the green disappears and you can't make out
+the D".
+
+Two rules come out of it:
+
+**A small element on a filled control is inverted, never washed.** A
+translucent dark plate under the fill's own ink is the shape of the mistake:
+both halves move together, so the contrast between them never improves. Flip
+it — near-white plate, panel-ground ink — and it reads on any hue a button
+might be filled with. Use **roles** for it and not device slots, because
+`--fbk-emph-on` is allowed to be `none` and a `none` background deletes the
+element.
+
+**A status hue does not go on a filled control at all.** Ask what it says when
+the control is enabled: for that button the dot was *always* "ready", because
+being blocked is exactly what disables it — so on the state where it was
+visible it carried nothing, and on the state where it carried something the
+button was dimmed and the reason was already in the tooltip. It went, and the
+blocked reason became a visible sentence in a `.fbk-note`. §15's question
+again: follow what the signal actually varies with.
+
+## 17. The height scale is a pointer question, not a control question
+
+26px was the stepper's height for four versions. It is under WCAG 2.5.8's
+24×24 floor once the border is counted, nowhere near 2.5.5's 44×44, and these
+are the buttons a player nudges **while playing**.
+
+The wrong fix is to grow the control that was complained about. Do that twice
+and a row has a 44px stepper beside a 26px chip, the shared band is gone, and
+every subsequent row is a negotiation. **Swap the scale instead**: `h-sm`
+26→32, `h-md` 32→44, `h-lg` 44→52 when `(pointer: coarse)` matches. One
+change, in `theme.js`, and every family grows together because every family
+already referenced the scale rather than a number.
+
+`h-sm` goes to 32 rather than 44 deliberately — it is the height of things
+that live in groups, where the row's own padding contributes and a five-rung
+ladder at 44px would stand taller than the primary.
+
+Two details that are easy to get wrong:
+
+- **Watch the query, do not read it once.** A convertible laptop changes
+  pointer with the panel open, and folding the keyboard back is precisely when
+  the controls need to grow.
+- **`min-width`, not `width`.** At 44px a one-character glyph is still one
+  character, so a square box is right — but a caller who puts `A` or `12` in a
+  stepper should get a wider box, not a clipped one.
+
+And the shape changed with the size: a circle is a pill that happens to be
+square, so the stepper and the chip were sharing `radius-pill` — two of the
+four families in one geometry, which is §1's mistake arriving slowly. A
+stepper is a rounded square with a glyph; a chip is a pill with a word in it.
 
 ## 14. Bump the version, and restart the server
 
