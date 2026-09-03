@@ -664,6 +664,31 @@ test('a dot and its number are PLACED at the same fraction of a fixed track', ()
     assert.match(cells[4].style.left, /^calc\(10px \+ 1 \*/);
 });
 
+test('a label is never kept right next to the last one', () => {
+    /*
+     * With 11 rungs the stride is 3, so the kept indices were 0, 3, 6, 9 and
+     * 10 — and `98` printed a couple of pixels from `100`, which costs space
+     * and says nothing you were not about to read. A kept index has to be at
+     * least half a stride clear of the end.
+     */
+    const rl = controls.rail();
+    const eleven = [];
+    for (let v = 80; v <= 100; v += 2) eleven.push({ value: v, label: String(v), state: 'next' });
+    rl.set(eleven);
+    const shown = [...rl.el.children[2].children].map((m) => m.textContent).filter(Boolean);
+    assert.ok(!shown.includes('98'), `98 should be dropped, got ${shown.join(' ')}`);
+    assert.equal(shown[0], '80');
+    assert.equal(shown[shown.length - 1], '100');
+
+    // A wider stride leaves room, so the one before the end survives.
+    const sixteen = [];
+    for (let v = 70; v <= 100; v += 2) sixteen.push({ value: v, label: String(v), state: 'next' });
+    rl.set(sixteen);
+    const wide = [...rl.el.children[2].children].map((m) => m.textContent).filter(Boolean);
+    assert.ok(wide.length >= 4 && wide.length <= 6, `got ${wide.join(' ')}`);
+    assert.equal(wide[wide.length - 1], '100');
+});
+
 test('the track is the same length however many rungs there are', () => {
     const rl = controls.rail();
     rl.set([80, 90, 100].map((v) => ({ value: v, label: String(v), state: 'next' })));
