@@ -523,6 +523,48 @@ square, so the stepper and the chip were sharing `radius-pill` — two of the
 four families in one geometry, which is §1's mistake arriving slowly. A
 stepper is a rounded square with a glyph; a chip is a pill with a word in it.
 
+## 18. Refactoring UI, applied by measurement rather than by quotation
+
+Three of that book's rules earned changes here, and the useful part is *how
+each one was decided* — every one of them started as a count, not an opinion,
+because "use fewer borders" and "labels are a last resort" will justify almost
+any edit if you let them.
+
+**Use fewer borders — where a boundary is drawn twice.** The panel was
+measured: **41 bordered elements** in 336px. That sounds damning until you
+look at what they are — 10 steppers, 5 chips, 4 buttons, a toggle track, a
+segmented track: in the four families the border *is* the control, and
+removing it removes the affordance. Ten more are the 1px separators between
+timeline blocks, which are the only thing distinguishing one block from the
+next. What was actually wrong was three **containers** carrying a hairline on
+top of a background that already separated them — a border over a fill is what
+makes a layout read as boxes inside boxes. Those three went; the 38 stayed.
+The rule is not "fewer borders", it is *one signal per boundary*.
+
+**Balance weight and contrast — which sometimes means MORE contrast.** The
+book's usual advice is that a heavy element needs lower contrast. A fold's
+chevron is the opposite case: a small, light glyph that is the only signal the
+row does anything, so it needs more contrast than the heading beside it, not
+less. It had less. Moving it to the front of the row fixed the other half of
+the same problem — an affordance at the far end of a 296px row, away from the
+text it belongs to.
+
+**Use fewer alignments.** Three values in the panel had three right edges:
+−14px (the body padding, correct), −26px and −59px. The −26 was the fold's
+summary, short by exactly the trailing chevron's width plus its gap — so
+moving the chevron to the front put that value on the same pixel as the
+slider's readout for free. The −59 is inside the plate, between two chevrons,
+and cannot reach the edge; that one is structural and stays.
+
+The rules this panel does **not** take from the book are worth naming too.
+Its section headings keep their hairlines: replacing four of them with
+whitespace would need more vertical space than the panel has, and they are
+also the app's own device (§8). And the four uppercase micro headings stay
+labels rather than being absorbed into their controls, because each one names
+a *group* of controls rather than a single value — "labels are a last resort"
+is about a label on one field, and applying it to a group heading just
+deletes the structure.
+
 ## 14. Bump the version, and restart the server
 
 The host reads `plugin.json` **once at startup**. A plugin's `styles` link is

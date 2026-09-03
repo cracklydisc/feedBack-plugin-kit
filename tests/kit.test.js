@@ -307,7 +307,7 @@ test('the summary survives a nullish value as empty, not as "null"', () => {
     // The summary is built from live settings, so the one thing it must not do
     // is print the word "null" into a heading.
     const f = controls.fold({ title: 'Policy', summary: 'x' });
-    const sum = f.head.children[1];
+    const sum = f.parts.summary;
     f.setSummary(null);
     assert.equal(sum.textContent, '');
     f.setSummary(undefined);
@@ -316,14 +316,23 @@ test('the summary survives a nullish value as empty, not as "null"', () => {
     assert.equal(sum.textContent, '0');
 });
 
-test('the head carries the title, the summary and one chevron, in that order', () => {
-    // Order is the contract the stylesheet reads — the summary is the flexible
-    // child between two fixed ones, which is what makes it ellipsize.
+test('the chevron LEADS, and the summary is the last cell', () => {
+    /*
+     * Order is the contract the stylesheet reads, and this order is the fix
+     * for "it isn't clear that the section expands": the affordance sits
+     * where the eye enters the row instead of 200px away at the lowest
+     * contrast in it, and the summary can then right-align against the
+     * panel's other values.
+     */
     const f = controls.fold({ title: 'How you drill', summary: 'goal 85%' });
     assert.equal(f.head.children.length, 3);
-    assert.equal(f.head.children[0].textContent, 'How you drill');
-    assert.equal(f.head.children[1].textContent, 'goal 85%');
-    assert.equal(f.head.children[2].className, 'fbk-fold-chev');
+    assert.equal(f.head.children[0].className, 'fbk-fold-chev');
+    assert.equal(f.head.children[1].textContent, 'How you drill');
+    assert.equal(f.head.children[2].textContent, 'goal 85%');
+    // And the named handles agree with the DOM, so a consumer never counts.
+    assert.equal(f.parts.chev, f.head.children[0]);
+    assert.equal(f.parts.title, f.head.children[1]);
+    assert.equal(f.parts.summary, f.head.children[2]);
 });
 
 // ── slider shapes ────────────────────────────────────────────────────────
