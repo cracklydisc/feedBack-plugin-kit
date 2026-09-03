@@ -19,6 +19,10 @@ import path from 'node:path';
 function makeNode(tag) {
     const node = {
         tagName: String(tag).toUpperCase(),
+        /* Real elements have this, and the kit now branches on it: a segmented
+           option's label may be a NODE rather than a string. A stub without it
+           reads every node as a string and the branch is never tested. */
+        nodeType: 1,
         children: [],
         dataset: {},
         style: {
@@ -1071,6 +1075,21 @@ test('a pick of five options wraps, a pick of four does not', () => {
     assert.equal(wordy.el.className.includes('fbk-seg-wrap'), true);
     assert.equal(controls.SEG_MAX_CHARS, 36);
 
+    /*
+     * A DRAWN OPTION contributes nothing to that budget, and arrives as a
+     * node. `(5) A#` says what a note head shows by BEING one; a word for it
+     * would be a caption on a caption. Four of those must not wrap just
+     * because their names would have.
+     */
+    const drawn = controls.segmented([1, 2, 3, 4].map((n) => ({
+        value: n,
+        label: controls.el('span', 'fbk-glyph', 'x'.repeat(30)),
+    })), () => {}, 'drawn');
+    assert.equal(drawn.el.className.includes('fbk-seg-wrap'), false, 'nodes do not spend the budget');
+    const first = drawn.node(1).querySelector('.fbk-seg-label');
+    assert.equal(first.children.length, 1, 'and the node went in as a node');
+    assert.equal(first.children[0].className, 'fbk-glyph');
+
     /* And it is still ONE pick either way. */
     five.set(3);
     assert.equal(five.node(3).classList.contains('fbk-on'), true);
@@ -1218,6 +1237,33 @@ test('the kit version in index.js is the one in package.json', () => {
         .map((x) => x[1] || x[2]);
     assert.ok(shown.length >= 2, 'the gallery names a version');
     for (const v of shown) assert.equal(v, pkg.version, 'gallery version');
+});
+
+test('pressing a control does not scroll the panel, and inputs keep their default', () => {
+    /*
+     * The body is the one scrolling child, so focusing a button near its bottom
+     * makes the browser scroll it into view — and what leaves the top is
+     * whatever the reader was picking from. Live Tab reported it as pressing a
+     * preset chip scrolling the preset row off the screen.
+     *
+     * The EXCEPTION is the part worth testing: an input, a select and a
+     * textarea are operated THROUGH that default — it is how a slider is
+     * dragged and a checkbox ticked. Live Tab's own fix cancelled it for
+     * inputs too and Chromium happened to survive that, which is not a thing
+     * to depend on. These two assertions came from that repository with the
+     * code.
+     */
+    const p2 = panel.createPanel({ id: 'guard', label: 'Guard' });
+    const fire = (tagName) => {
+        const ev = { target: { tagName }, prevented: false, preventDefault() { this.prevented = true; } };
+        p2.body.fire('mousedown', ev);
+        return ev.prevented;
+    };
+
+    assert.equal(fire('BUTTON'), true, 'a button loses it, so the panel holds still');
+    for (const tag of ['INPUT', 'SELECT', 'TEXTAREA']) {
+        assert.equal(fire(tag), false, tag + ' is operated through it');
+    }
 });
 
 function source(rel) {
