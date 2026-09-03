@@ -29,7 +29,23 @@ function makeNode(tag) {
         },
         _attrs: {},
         _listeners: {},
-        textContent: '',
+        /*
+         * `textContent` CLEARS THE CHILDREN, as the real thing does.
+         *
+         * It was a plain string property, so `node.textContent = ''` — which
+         * every rebuild in this kit uses to empty a container — left the old
+         * children in place and the new ones appended after them. A rail
+         * rebuilt from 3 rungs to 11 reported 14, and any test that counted
+         * children after a rebuild was measuring the stub rather than the
+         * code. Worth fixing rather than working around: a stub that lies
+         * about this hides exactly the class of bug it exists to catch.
+         */
+        _text: '',
+        get textContent() { return this._text; },
+        set textContent(v) {
+            this._text = v === null || v === undefined ? '' : String(v);
+            if (this._text === '') this.children.length = 0;
+        },
         className: '',
         disabled: false,
         hidden: false,
@@ -620,19 +636,47 @@ test('a dense ladder keeps every dot and thins only the labels', () => {
     assert.equal(onMark.textContent, '66');
 });
 
-test('the rail divides into one equal cell per rung, so numbers sit under dots', () => {
+test('a dot and its number are PLACED at the same fraction of a fixed track', () => {
     /*
-     * Both rows were `space-between`, which aligns the first child's LEFT edge
-     * and the last child's RIGHT edge — so the centres only coincide when every
-     * child is the same width. A dot is 12px (18 when current) and a mark is as
-     * wide as its text, "80" against "100", so the numbers drifted further from
-     * their dots along the rail. Reported exactly that way.
+     * Two reports, one cause. `space-between` aligned the first child's left
+     * edge and the last child's right edge, so centres only coincided when
+     * every child was the same width — and a dot is 12px against a number as
+     * wide as "100". Equal flex cells fixed that, and then broke it again on a
+     * dense ladder: thinning the numbers collapsed the empty marks and let the
+     * survivors redistribute.
+     *
+     * Placing both at the same fraction of a CONSTANT track settles both, and
+     * the constant is the second half of the ask: the line no longer grows and
+     * shrinks as the rung count changes.
      */
     const rl = controls.rail();
     rl.set([80, 85, 90, 95, 100].map((v) => ({ value: v, label: String(v), state: 'next' })));
-    assert.equal(rl.el.style.getPropertyValue('--fbk-cells'), '5');
+
+    const cells = [...rl.el.children[1].children];
+    const marks = [...rl.el.children[2].children];
+    assert.equal(cells.length, 5);
+    assert.equal(marks.length, 5);
+    for (let i = 0; i < 5; i += 1) {
+        assert.equal(cells[i].style.left, marks[i].style.left, `rung ${i}`);
+    }
+    // First at the inset, last at the far inset — the track's ends, always.
+    assert.match(cells[0].style.left, /^calc\(10px \+ 0 \*/);
+    assert.match(cells[4].style.left, /^calc\(10px \+ 1 \*/);
+});
+
+test('the track is the same length however many rungs there are', () => {
+    const rl = controls.rail();
     rl.set([80, 90, 100].map((v) => ({ value: v, label: String(v), state: 'next' })));
-    assert.equal(rl.el.style.getPropertyValue('--fbk-cells'), '3');
+    const threeFirst = rl.el.children[1].children[0].style.left;
+    const threeLast = rl.el.children[1].children[2].style.left;
+
+    const many = [];
+    for (let v = 80; v <= 100; v += 2) many.push({ value: v, label: String(v), state: 'next' });
+    rl.set(many);
+    const cells = rl.el.children[1].children;
+    assert.equal(cells.length, many.length, 'a cell per rung');
+    assert.equal(cells[0].style.left, threeFirst);
+    assert.equal(cells[cells.length - 1].style.left, threeLast);
 });
 
 test('a short ladder labels every rung', () => {
