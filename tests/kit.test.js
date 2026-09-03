@@ -866,7 +866,31 @@ test('a drag hands back its ends in order, whichever way it was swept', () => {
     assert.ok(drags[0][0] < drags[0][1], `got ${drags[0]}`);
 });
 
-test('a handle drag snaps to a block edge and does not start a sweep', () => {
+test('a handle snaps only when NEAR an edge, so a drag can place freely', () => {
+    /*
+     * It snapped unconditionally, which meant an edge could sit ONLY on a
+     * block boundary — and since the ± steppers move by a bar, there was no
+     * way at all to put one mid-phrase. A lick with a pickup starts before the
+     * bar line, so that is a real thing to want.
+     *
+     * The stub reports a 100px-wide strip, so with a 30s song the 14px
+     * threshold is 4.2s of tolerance.
+     */
+    const edges = [];
+    const s = strip({ onEdge: (w, t) => edges.push(t) });
+
+    // 12px is 3.6s — inside the threshold, so it snaps to the edge at 0.
+    s.handles.start.fire('pointerdown', { clientX: 30, pointerId: 1, stopPropagation() {} });
+    s.handles.start.fire('pointermove', { clientX: 12, pointerId: 1 });
+    assert.equal(edges[0], 0, 'near an edge, it snaps');
+
+    // 50px is 15s, and the nearest edge is 10 or 20 — 5s away, past the
+    // threshold, so the drag places where it is.
+    s.handles.start.fire('pointermove', { clientX: 50, pointerId: 1 });
+    assert.equal(edges[1], 15, 'away from an edge, it places freely');
+});
+
+test('a handle drag does not also start a sweep', () => {
     const edges = [];
     const drags = [];
     const s = strip({ onEdge: (w, t) => edges.push([w, t]), onDrag: (a, b) => drags.push([a, b]) });
@@ -875,9 +899,9 @@ test('a handle drag snaps to a block edge and does not start a sweep', () => {
     s.handles.start.fire('pointermove', { clientX: 36, pointerId: 1 });
     assert.equal(edges.length, 1);
     assert.equal(edges[0][0], 'start');
-    // 36/100 of a 30s song is 10.8s, and the nearest block edge is 10.
-    assert.equal(edges[0][1], 10);
-    // And the strip underneath must not have taken it as a sweep.
+    // The strip underneath must not have taken it as a sweep: the handle sits
+    // ON the blocks, so without the `dragging` guard a grab would start a
+    // fresh range beneath the edge you meant to move.
     assert.equal(drags.length, 0);
 });
 
