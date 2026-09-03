@@ -250,9 +250,65 @@ test('ink takes an alpha', () => {
 test('inkOn picks dark on a light fill and light on a dark one', () => {
     // The host's palette pairs on-accent with its accent and says nothing
     // about the rest, so white-on-amber is one careless line away.
-    assert.equal(theme.inkOn('text'), 'rgb(9 12 20)');       // near-white fill
-    assert.equal(theme.inkOn('bg'), 'rgb(248 250 252)');     // near-black fill
-    assert.equal(theme.inkOn('gold'), 'rgb(9 12 20)');       // light gold
+    assert.equal(theme.inkOn('text'), 'rgb(9 12 20)');           // near-white fill
+    assert.equal(theme.inkOn('bg'), 'rgb(232 238 252)');         // the well
+    assert.equal(theme.inkOn('gold'), 'rgb(9 12 20)');           // light gold
+});
+
+test('the ink on the accent actually passes contrast against it', () => {
+    /*
+     * The one pairing a palette gets wrong by habit, and it is not a matter
+     * of taste — it is arithmetic. `--fbk-accent` is a LIGHT blue, so:
+     *
+     *     white  #E8EEFC on it   2.22 : 1
+     *     pure white on it       2.58 : 1
+     *     the well #05070C on it 7.43 : 1
+     *
+     * 2.22 fails 4.5 for text, fails 3.0 for large text, and fails 3.0 for a
+     * UI component. Every version of this palette drew the primary with white
+     * ink, and this test is here so the next one cannot.
+     */
+    const rgbOf = (role) => theme.roleDefaults[role].split(/\s+/).map(Number);
+    const lum = (c) => {
+        const f = c.map((v) => {
+            const n = v / 255;
+            return n <= 0.03928 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4);
+        });
+        return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2];
+    };
+    const ratio = (a, b) => {
+        const [l1, l2] = [lum(a), lum(b)].sort((x, y) => y - x);
+        return (l1 + 0.05) / (l2 + 0.05);
+    };
+
+    const onAccent = ratio(rgbOf('onAccent'), rgbOf('accent'));
+    assert.ok(onAccent >= 4.5, `ink on accent is ${onAccent.toFixed(2)}:1, needs 4.5`);
+    // And the ink the palette does NOT use there would have failed, which is
+    // the whole point of pinning this.
+    const white = ratio(rgbOf('text'), rgbOf('accent'));
+    assert.ok(white < 3, `white on accent is ${white.toFixed(2)}:1 — if this ever passes, revisit`);
+});
+
+test('text and dim clear AA on every surface in the ramp', () => {
+    const rgbOf = (role) => theme.roleDefaults[role].split(/\s+/).map(Number);
+    const lum = (c) => {
+        const f = c.map((v) => {
+            const n = v / 255;
+            return n <= 0.03928 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4);
+        });
+        return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2];
+    };
+    const ratio = (a, b) => {
+        const [l1, l2] = [lum(a), lum(b)].sort((x, y) => y - x);
+        return (l1 + 0.05) / (l2 + 0.05);
+    };
+    // `dim` carries body copy at 11px, so it needs 4.5 and not 3.
+    for (const surface of ['bg', 'surface', 'plate', 'surface2']) {
+        for (const ink of ['text', 'dim']) {
+            const r = ratio(rgbOf(ink), rgbOf(surface));
+            assert.ok(r >= 4.5, `${ink} on ${surface} is ${r.toFixed(2)}:1`);
+        }
+    }
 });
 
 test('emphasis is never fully off, so a primary cannot be flat', () => {
@@ -387,8 +443,8 @@ test('a coarse pointer gets the bigger height scale', () => {
     try {
         theme.follow();
         assert.equal(seen['--fbk-h-sm'], '32px');
-        assert.equal(seen['--fbk-h-md'], '44px');
-        assert.equal(seen['--fbk-h-lg'], '52px');
+        assert.equal(seen['--fbk-h-md'], '48px');
+        assert.equal(seen['--fbk-h-lg'], '64px');
     } finally {
         theme.unfollow();
         globalThis.window.matchMedia = realMM;
@@ -406,8 +462,10 @@ test('a fine pointer keeps the mouse scale', () => {
     globalThis.window.matchMedia = () => ({ matches: false });
     try {
         theme.follow();
-        assert.equal(seen['--fbk-h-md'], '32px');
-        assert.equal(seen['--fbk-h-lg'], '44px');
+        // 40 for a mouse is already the rack scale: anything pressed during
+        // play, not "a stepper is 32 because it is a stepper".
+        assert.equal(seen['--fbk-h-md'], '40px');
+        assert.equal(seen['--fbk-h-lg'], '56px');
     } finally {
         theme.unfollow();
         globalThis.window.matchMedia = realMM;
@@ -447,6 +505,64 @@ function source(rel) {
     const src = fs.readFileSync(path.join(import.meta.dirname, rel), 'utf8');
     return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 }
+
+test('every fallback in the stylesheet matches the recipe it mirrors', () => {
+    /*
+     * THE SECOND COPY OF THE SCALE.
+     *
+     * Every rule in kit.css is written `var(--fbk-h-md, 40px)` — the fallback
+     * exists so a panel is still shaped if `follow()` never ran. Which makes
+     * it a hand-written mirror of the recipe table, and a mirror nobody
+     * compares is a mirror that goes wrong quietly: after the rack palette
+     * landed there were **63** fallbacks still carrying the previous scale,
+     * and the only reason it was noticed is that the gallery is static HTML
+     * and therefore renders the fallbacks rather than the recipe.
+     *
+     * The "no stray pixel" test could not catch it, because a stale 32px is a
+     * perfectly legal number from the old scale.
+     *
+     * So: read them back out and compare. A slot with no fallback is fine
+     * (some are deliberately bare); a fallback that disagrees is not.
+     */
+    const css = source('../assets/kit.css');
+    const recipes = theme.recipeDefaults;
+    const mismatches = [];
+
+    const seen = new Set();
+    const re = /var\(--fbk-([a-z0-9-]+),\s*([^()]*?(?:\([^()]*\)[^()]*?)*)\)/g;
+    for (const m of css.matchAll(re)) {
+        const [, slot, fallbackRaw] = m;
+        const fallback = fallbackRaw.trim();
+        if (!fallback || !(slot in recipes)) continue;
+        const key = slot + '|' + fallback;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        const want = String(recipes[slot]).trim();
+
+        /*
+         * `none` is ALWAYS allowed. It is the documented legal value of every
+         * device slot (§6), and it is what an unhooked panel should fall back
+         * to — a hardcoded glow in a fallback is precisely the literal device
+         * the second law forbids.
+         */
+        if (fallback === 'none') continue;
+
+        /*
+         * A `font` shorthand's fallback cannot reference `var(--fbk-font)`,
+         * because a fallback has to work when nothing is set. So compare
+         * everything except the family: weight, size and line-height are the
+         * scale, and the family is the one part allowed to differ.
+         */
+        const withoutFamily = (v) => v.replace(/\s+\S+$/, '');
+        const ok = /var\(--fbk-font/.test(want)
+            ? withoutFamily(want) === withoutFamily(fallback)
+            : want === fallback;
+        if (!ok) mismatches.push(`--fbk-${slot}: recipe "${want}" vs fallback "${fallback}"`);
+    }
+
+    assert.deepEqual(mismatches, [], mismatches.join('; '));
+});
 
 test('no literal colour in the recipe table or the stylesheet', () => {
     for (const rel of ['../src/theme.js', '../assets/kit.css']) {
