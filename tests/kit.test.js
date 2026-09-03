@@ -67,7 +67,10 @@ function makeNode(tag) {
                 return want;
             },
         },
-        appendChild(c) { this.children.push(c); return c; },
+        appendChild(c) { c._parent = this; this.children.push(c); return c; },
+        removeChild(c) { const i = this.children.indexOf(c); if (i >= 0) this.children.splice(i, 1); return c; },
+        remove() { if (this._parent) this._parent.removeChild(this); },
+        focus() { this._focused = true; },
         setAttribute(k, v) { this._attrs[k] = String(v); },
         getAttribute(k) { return this._attrs[k]; },
         addEventListener(type, fn) { (this._listeners[type] ||= []).push(fn); },
@@ -1034,6 +1037,160 @@ test('the folded strip shows its key hint in the cue', () => {
     const cue = [...f.el.children].find((c) => c.className === 'fbk-folded-cue');
     assert.ok(cue, 'a cue');
     assert.equal(cue.textContent, 'OPEN · Y');
+});
+
+test('a pick of five options wraps, a pick of four does not', () => {
+    /*
+     * THE COUNT DECIDES, not the author. Five named labels in one 360px row get
+     * about 66px each, which truncates a word like `Sight-reading`. Whoever
+     * declares five options should not also have to know that five is where a
+     * row stops working — the same argument as the strip's zone gap and its
+     * corner radius.
+     */
+    const four = controls.segmented(
+        [1, 2, 3, 4].map((n) => ({ value: n, label: 'x' + n })), () => {}, 'four');
+    const five = controls.segmented(
+        [1, 2, 3, 4, 5].map((n) => ({ value: n, label: 'x' + n })), () => {}, 'five');
+
+    assert.equal(four.el.className.includes('fbk-seg-wrap'), false, 'four stays a row');
+    assert.equal(five.el.className.includes('fbk-seg-wrap'), true, 'five wraps');
+    assert.equal(controls.SEG_MAX_INLINE, 4);
+
+    /* And it is still ONE pick either way. */
+    five.set(3);
+    assert.equal(five.node(3).classList.contains('fbk-on'), true);
+    assert.equal(five.node(4).classList.contains('fbk-on'), false);
+});
+
+test('a chip can carry a mark its label cannot say', () => {
+    /*
+     * "This is the preset you picked" is the chip being lit; "and you have
+     * changed something under it" is a second fact about the SAME chip, so it
+     * cannot be another chip.
+     */
+    const seg = controls.segmented(
+        ['live', 'study', 'sight', 'arcade', 'minimal'].map((v) => ({ value: v, label: v })),
+        () => {}, 'presets');
+    const marks = () => seg.values().filter((v) => !!seg.node(v).querySelector('.fbk-seg-mark'));
+
+    assert.deepEqual(marks(), [], 'nothing marked to begin with');
+    seg.mark('study');
+    assert.deepEqual(marks(), ['study']);
+
+    /* Moving it does not leave the old one behind. */
+    seg.mark('arcade');
+    assert.deepEqual(marks(), ['arcade']);
+    seg.mark(null);
+    assert.deepEqual(marks(), []);
+});
+
+test('a select is a native select, and says which value is current', () => {
+    /*
+     * A hand-drawn sheet was built here first and withdrawn on the reader's
+     * call. What native brings back is keyboard, type-ahead, screen readers, a
+     * gamepad and a list allowed to be taller than the panel; what stays ours
+     * is the well it sits in.
+     */
+    const picks = [];
+    const sel = controls.select(
+        [
+            { value: 'none', label: 'None (tab only)' },
+            { value: 'hw', label: '3D Highway' },
+            { value: 'jt', label: 'Jumping Tab' },
+        ],
+        (v) => picks.push(v),
+        { ariaLabel: 'Board above the tab' },
+    );
+
+    assert.equal(sel.input.tagName, 'SELECT');
+    assert.equal(sel.input.getAttribute('aria-label'), 'Board above the tab');
+    assert.deepEqual(sel.values(), ['none', 'hw', 'jt']);
+    assert.equal(sel.input.children.length, 3, 'an option each');
+
+    /* A value in the list is shown; one that is not is REPORTED, not swallowed
+       — a board uninstalled while it was the chosen one is a real state. */
+    assert.equal(sel.set('hw'), true);
+    assert.equal(sel.input.value, 'hw');
+    assert.equal(sel.input.dataset.missing, 'false');
+    assert.equal(sel.set('gone'), false);
+    assert.equal(sel.input.dataset.missing, 'true');
+
+    /* Choosing reports the value. */
+    sel.input.value = 'jt';
+    sel.input.fire('change');
+    assert.deepEqual(picks, ['jt']);
+});
+
+test('a select rebuilds only when its list changed', () => {
+    /*
+     * The board list comes from the app and can arrive after the panel does, so
+     * `rebuild` gets called on every render — and a rebuilt row is a row that
+     * cannot be clicked, because the pointer went down on a node that no longer
+     * exists. Same guard as the chips'.
+     */
+    const sel = controls.select([{ value: 'a', label: 'A' }], () => {});
+    assert.equal(sel.rebuild('sig1', [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }]), true);
+    assert.deepEqual(sel.values(), ['a', 'b']);
+    assert.equal(sel.rebuild('sig1', [{ value: 'z', label: 'Z' }]), false, 'same signature, no rebuild');
+    assert.deepEqual(sel.values(), ['a', 'b'], 'and the rows are untouched');
+});
+
+test('a select can be disabled, and a rebuild keeps the current value', () => {
+    /*
+     * A field that goes away under a condition — the board list vanishes when
+     * the tab turns pages — is disabled rather than removed, so the rack does
+     * not change shape under the reader.
+     *
+     * And the list arrives from the app AFTER the panel does, so `rebuild` is
+     * called every render: replacing a select's options while its list is open
+     * closes it under the reader's hand, and losing the current value on a
+     * rebuild silently re-picks the first board in the list.
+     */
+    const sel = controls.select([{ value: 'a', label: 'A' }], () => {});
+    sel.disable(true);
+    assert.equal(sel.input.disabled, true);
+    sel.disable(false);
+    assert.equal(sel.input.disabled, false);
+
+    sel.set('a');
+    assert.equal(sel.rebuild('sig1', [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }]), true);
+    assert.deepEqual(sel.values(), ['a', 'b']);
+    assert.equal(sel.input.value, 'a', 'the choice survived the rebuild');
+    assert.equal(sel.rebuild('sig1', [{ value: 'z', label: 'Z' }]), false, 'same signature, no rebuild');
+    assert.deepEqual(sel.values(), ['a', 'b']);
+});
+
+test('a slider can show a derived second number, and never take it', () => {
+    /*
+     * `5 -> 7.8`: what you asked for, and what is on screen once the tempo has
+     * widened the window. It is a READING (§21), so it sits beside the value
+     * and the slider still writes only the value.
+     */
+    const s2 = controls.slider({ min: 2, max: 24, step: 0.5, unit: 'beats', onInput: () => {} });
+    const aside = s2.el.querySelector('.fbk-readout-aside');
+    assert.ok(aside, 'there is somewhere for it to go');
+    assert.equal(aside.hidden, true, 'hidden until there is one');
+
+    s2.setAside('\u2192 7.8');
+    assert.equal(aside.hidden, false);
+    assert.equal(aside.textContent, '\u2192 7.8');
+
+    s2.setAside(null);
+    assert.equal(aside.hidden, true);
+});
+
+test('the kit version in index.js is the one in package.json', () => {
+    /*
+     * `install()` publishes it and consumers stamp it on the stylesheet link, so
+     * a stale number here serves yesterday's CSS — the same trap that had Riff
+     * Repeater a release behind, silently, with a restart that did not help.
+     * It was 0.20.0 while the kit was at 0.25.1 when this test was written.
+     */
+    const src = fs.readFileSync(path.join(import.meta.dirname, '..', 'src', 'index.js'), 'utf8');
+    const pkg = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '..', 'package.json'), 'utf8'));
+    const m = src.match(/export const VERSION = '([^']+)'/);
+    assert.ok(m, 'index.js declares a VERSION');
+    assert.equal(m[1], pkg.version);
 });
 
 function source(rel) {
