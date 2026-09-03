@@ -1498,6 +1498,7 @@ test('no stray pixel values outside the geometry allowlist', () => {
         '34px', '56px', '76px',         // toggle track, the two readout boxes
         '72px', '88px',                 // the meter name column, narrow and wide
         '68px',                         // the list row's name column
+        '168px',                        // the settings sheet's label column
         '28px',                         // the A/B handle's grip width
         '7px', '360px',                 // the chassis indicator, the panel
         '80px',                         // slider min-width
