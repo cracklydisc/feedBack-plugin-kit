@@ -1550,3 +1550,55 @@ test('register skips an entry with no key or no handler', () => {
     assert.deepEqual(seen.map((s) => s.key), ['y']);
     delete globalThis.window.registerShortcut;
 });
+
+// ─────────────────────────────────────────────────────────────────────────
+// A SIBLING SELECTOR HAS TO REACH ITS SIBLING.
+//
+// The toggle's DOM order is input, text, track — the label was deliberately
+// moved in front of the switch — while three rules still read
+// `input:checked + .fbk-toggle-track`, the IMMEDIATELY next sibling. The
+// immediately next sibling is the text, so those rules matched nothing and the
+// switch never showed its on state. `~ .fbk-toggle-text` one line below did
+// work, so the label brightened while the track stayed dark: half the control
+// saying one thing and half the other.
+//
+// Reported twice. This test is the thing that would have caught it: it derives
+// the child order from the builder and checks that every combinator can still
+// reach across it, so reordering the DOM or tightening a combinator fails here
+// rather than in a screenshot nobody looks at twice.
+test('the toggle CSS combinators reach across the DOM order', () => {
+    const controls = source('../src/controls.js');
+    const css = source('../assets/kit.css');
+
+    const body = controls.slice(controls.indexOf('export function toggle('));
+    const end = body.indexOf('\nexport function');
+    const fn = end === -1 ? body : body.slice(0, end);
+
+    // The order the builder appends children in, as class names.
+    const order = [];
+    for (const m of fn.matchAll(/wrap\.appendChild\(([^)]*)\)/g)) {
+        const arg = m[1];
+        if (arg.includes('input')) { order.push('input'); continue; }
+        const cls = arg.match(/'(fbk-toggle-[a-z]+)'/);
+        if (cls) order.push(cls[1]);
+    }
+    assert.ok(order.length >= 3, 'the builder appends the input and its parts');
+    assert.equal(order[0], 'input', 'the input comes first');
+
+    let checked = 0;
+    for (const m of css.matchAll(/\.fbk-toggle input(:[a-z-]+)?\s*([+~])\s*\.(fbk-toggle-[a-z]+)/g)) {
+        const [, , comb, target] = m;
+        const from = order.indexOf('input');
+        const to = order.indexOf(target);
+        assert.notEqual(to, -1, `${target} is a child the builder appends`);
+        const adjacent = to === from + 1;
+        if (!adjacent) {
+            assert.equal(comb, '~',
+                `\`.fbk-toggle input ${comb} .${target}\` cannot match: `
+                + `${order.slice(from + 1, to).join(', ')} sits between them, `
+                + 'so this needs the general sibling combinator');
+        }
+        checked += 1;
+    }
+    assert.ok(checked >= 3, 'the toggle states are styled off the input');
+});
