@@ -413,11 +413,20 @@ test('a slider is label, value, then track — in that order', () => {
     assert.match(kids[0].className, /fbk-slider-label/);
 });
 
-test('a slider with no label is value then track', () => {
+test('a slider with no label is track then value', () => {
+    /*
+     * The order flips, and the reason is which thing the value pairs with.
+     * WITH a label it sits beside the word that names it, so they read as one
+     * unit. WITHOUT one it is inside a `field` whose legend already names it —
+     * nothing to pair with on the left — and putting it there anyway left the
+     * track 62px short of the field's right edge, which is exactly the
+     * "difficulty bar does not go all the way" report.
+     */
     const sl = controls.slider({ unit: '%' });
     assert.equal(sl.label, null);
     assert.equal(sl.el.children.length, 2);
-    assert.equal(sl.el.children[1], sl.input);
+    assert.equal(sl.el.children[0], sl.input);
+    assert.equal(sl.el.children[1].className, 'fbk-readout');
 });
 
 test('a slider refuses a nullish value rather than jumping to its minimum', () => {
@@ -585,6 +594,35 @@ test('the rail rebuilds only when the rungs change shape', () => {
     // this renders twice a second while a drill runs.
     assert.equal(rl.el.children[1].children[0], first);
     assert.equal(first.dataset.state, 'done');
+});
+
+test('a dense ladder keeps every dot and thins only the labels', () => {
+    /*
+     * A step of +2 from 60 is 21 rungs. The dots are the ladder — the shape of
+     * the climb is the information, so none may go — while the numbers are a
+     * convenience, and 21 of them in 330px is a smear.
+     */
+    const rl = controls.rail();
+    const many = [];
+    for (let v = 60; v <= 100; v += 2) many.push({ value: v, label: String(v), state: v === 66 ? 'on' : 'next' });
+    rl.set(many);
+
+    assert.equal(rl.el.children[1].children.length, 21, 'every dot');
+    assert.equal(rl.el.dataset.dense, 'true');
+    const labelled = [...rl.el.children[2].children].filter((m) => m.textContent).length;
+    assert.ok(labelled < 21 && labelled >= 5, `labelled ${labelled} of 21`);
+
+    // The rung you are ON is never one of the ones dropped: "which speed am I
+    // playing at" is the question the rail exists to answer.
+    const onMark = [...rl.el.children[2].children][many.findIndex((r) => r.state === 'on')];
+    assert.equal(onMark.textContent, '66');
+});
+
+test('a short ladder labels every rung', () => {
+    const rl = controls.rail();
+    rl.set([80, 85, 90, 95, 100].map((v) => ({ value: v, label: String(v), state: 'next' })));
+    assert.equal(rl.el.dataset.dense, 'false');
+    assert.equal([...rl.el.children[2].children].filter((m) => m.textContent).length, 5);
 });
 
 test('an empty rail does not throw and fills nothing', () => {
