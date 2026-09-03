@@ -197,13 +197,22 @@
     align-items: center;
     gap: var(--fbk-s-3, 6px);
     /*
-     * NO `width: 100%`. A fixed-width box with negative horizontal margins
-     * SHIFTS rather than widens — the head ended up 6px left of its parent
-     * and 6px short on the right, which bled the hover surface out of one
-     * side only and left the summary 12px inside the alignment it was moved
-     * to join. `display: flex` is already block-level, so `width: auto`
-     * fills the parent and the negative margins can do what they are for.
+     * `width: 100%` and NO negative margins, and both halves of that were
+     * learned the hard way.
+     *
+     * A `<button>` shrink-to-fits even with `display: flex` — its `width:
+     * auto` is fit-content, not fill-available, because the UA treats it as
+     * an atomic box for intrinsic sizing. So `width: 100%` is not optional
+     * here; removing it collapsed the head to 264px of a 296px row.
+     *
+     * And a FIXED-width box with negative horizontal margins SHIFTS rather
+     * than widens: `margin: 0 -6px` put the head 6px left of its parent and
+     * 6px short on the right, which bled the hover surface out of one side
+     * only and left the summary 12px inside the alignment §18 moved it to
+     * join. The bleed was the nicer detail and the alignment is the one that
+     * was written down, so the bleed went.
      */
+    width: 100%;
     min-height: var(--fbk-h-sm, 26px);
     padding: 0;
     background: none;
@@ -272,17 +281,14 @@
 .fbk-fold[data-open="true"] .fbk-fold-chev { transform: rotate(90deg); }
 
 /*
- * A hover surface on the whole head.
+ * A hover surface on the WHOLE head.
  *
- * Bleeding past the body's padding on purpose, so the highlight reads as "this
- * row is the button" rather than "this text is a link" — the row IS the hit
- * target (DESIGN.md §12), and a hover state narrower than the target teaches
- * the wrong thing about where to click.
+ * Covering the row exactly, because the row is the hit target (DESIGN.md §12)
+ * and a hover state narrower than the target teaches the wrong thing about
+ * where to click.
  */
 .fbk-fold-head {
     border-radius: var(--fbk-radius-sm, 8px);
-    margin: 0 calc(var(--fbk-s-3, 6px) * -1);
-    padding: 0 var(--fbk-s-3, 6px);
     transition: background var(--fbk-motion, 140ms) ease;
 }
 

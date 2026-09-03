@@ -553,8 +553,21 @@ text it belongs to.
 −14px (the body padding, correct), −26px and −59px. The −26 was the fold's
 summary, short by exactly the trailing chevron's width plus its gap — so
 moving the chevron to the front put that value on the same pixel as the
-slider's readout for free. The −59 is inside the plate, between two chevrons,
-and cannot reach the edge; that one is structural and stays.
+slider's readout. The −59 is inside the plate, between two chevrons, and
+cannot reach the edge; that one is structural and stays.
+
+Getting the −26 to actually become −14 cost two CSS facts worth keeping:
+
+- **A `<button>` shrink-to-fits even with `display: flex`.** Its `width: auto`
+  is fit-content and not fill-available, because the UA treats it as an atomic
+  box for intrinsic sizing. A full-width button needs `width: 100%`; removing
+  it collapsed a 296px row to 264px.
+- **A fixed-width box with negative horizontal margins SHIFTS rather than
+  widens.** `width: 100%` plus `margin: 0 -6px` moved the head 6px left and
+  left it 6px short on the right — so a hover surface meant to bleed past the
+  padding bled out of one side only, and the value stayed 12px inside the
+  alignment it had just been moved to join. The bleed was the nicer detail and
+  the alignment was the one written down, so the bleed went.
 
 The rules this panel does **not** take from the book are worth naming too.
 Its section headings keep their hairlines: replacing four of them with
