@@ -74,9 +74,39 @@ function makeNode(tag) {
         removeEventListener() {},
         click() { for (const fn of (this._listeners.click || [])) fn({ stopPropagation() {} }); },
         fire(type, e = {}) { for (const fn of (this._listeners[type] || [])) fn(e); },
-        querySelector() { return null; },
-        querySelectorAll() { return []; },
-        contains() { return false; },
+        /*
+         * A REAL `querySelector`, for tag names and single classes.
+         *
+         * It used to return null and an empty list unconditionally, which is
+         * worse than missing: `assert.equal(body.querySelectorAll('button')
+         * .length, 0)` passed because the stub could not answer, not because
+         * the body held no buttons. A stub that always says "nothing" turns
+         * every absence assertion into a tautology.
+         *
+         * Only what the kit actually uses: `tag` and `.class`, descendants
+         * included, in document order.
+         */
+        querySelectorAll(sel) {
+            const want = String(sel || '').trim();
+            const byClass = want.startsWith('.');
+            const key = byClass ? want.slice(1) : want.toLowerCase();
+            const out = [];
+            const walk = (n) => {
+                for (const c of n.children) {
+                    const cls = String(c.className || '').split(/\s+/);
+                    if (byClass ? cls.includes(key) : String(c.tagName || '').toLowerCase() === key) out.push(c);
+                    walk(c);
+                }
+            };
+            walk(this);
+            return out;
+        },
+        querySelector(sel) { return this.querySelectorAll(sel)[0] || null; },
+        contains(other) {
+            if (other === this) return true;
+            const walk = (n) => n.children.some((c) => c === other || walk(c));
+            return walk(this);
+        },
         getBoundingClientRect() { return { left: 0, top: 0, width: 100, height: 20 }; },
     };
     // classList's Set has to be per-node, not shared through the literal.
@@ -819,9 +849,21 @@ function strip(extra = {}) {
     return s;
 }
 
+/*
+ * The blocks row, BY CLASS.
+ *
+ * These tests used to walk `el.children[0].children`, which is how adding an
+ * inner track between the strip and its blocks broke two of them: an index
+ * into a DOM is an assertion about the shape of the tree, made silently, in a
+ * test about something else.
+ */
+function blocksOf(s) {
+    return s.el.querySelector('.fbk-strip-blocks').children;
+}
+
 test('a strip draws every block, including the empty one', () => {
     const s = strip();
-    const blocks = s.el.children[0].children;
+    const blocks = blocksOf(s);
     assert.equal(blocks.length, 3);
     // Proportional widths, because the strip is a map.
     assert.equal(blocks[0].style._props ? undefined : undefined, undefined);
@@ -867,7 +909,7 @@ test('a count that has not been taken yet is not a count of zero', () => {
     // went inert between a song loading and its chart arriving.
     const s = controls.rangeStrip({});
     s.set([{ key: 'a', start: 0, end: 10, events: null }], 10, null);
-    assert.equal(s.el.children[0].children[0].dataset.empty, 'false');
+    assert.equal(blocksOf(s)[0].dataset.empty, 'false');
 });
 
 test('a drag past the slop takes a range; under it, it is a tap', () => {
@@ -1106,12 +1148,18 @@ test('every custom property the stylesheet reads is one the theme writes', () =>
     }
     for (const slot of Object.keys(theme.recipeDefaults)) written.add('--fbk-' + slot);
     /*
-     * Set per-element by JS rather than on the root: a fill fraction, and the
-     * rail's cell count — CSS cannot count children, and a rail whose line has
-     * to end at its outer dots' centres needs to know how many there are.
+     * Some properties are set PER ELEMENT by a builder rather than on the root:
+     * a fill fraction, the rail's cell count, a zone's gap. CSS cannot count
+     * children or measure a sibling, so these have to come from JS.
+     *
+     * Read out of the source rather than listed here. A hand-kept allowance is
+     * the same debt this test exists to pay off — it would let a builder rename
+     * what it sets and leave the stylesheet reading the old name, silently,
+     * which is precisely the bug in the note above.
      */
-    written.add('--fbk-fill');
-    written.add('--fbk-cells');
+    for (const m of source('../src/controls.js').matchAll(/setProperty\(\s*'(--fbk-[a-z0-9-]+)'/g)) {
+        written.add(m[1]);
+    }
 
     const unknown = new Set();
     for (const m of css.matchAll(/var\((--fbk-[a-z0-9-]+)/g)) {
