@@ -1603,3 +1603,47 @@ test('the toggle CSS combinators reach across the DOM order', () => {
     }
     assert.ok(checked >= 3, 'the toggle states are styled off the input');
 });
+
+// ─────────────────────────────────────────────────────────────────────────
+// THE SLOT WATCH MUST NOT STOP WATCHING.
+//
+// `attach()` polled every 500ms for 24 tries and then cleared the interval,
+// while its own comment said "keep going past the first success: the slot can
+// be re-created". After twelve seconds nobody put the button back, so a player
+// that rebuilt its control slot lost the panel for the rest of the session —
+// and the plugin could not notice, because `mountControls()` returns true as
+// soon as its `panel` exists, so nothing ever re-attached.
+//
+// Only `detach()` may leave the watch stopped. Inside `attach()` a
+// `clearInterval` has to be followed by a new `setInterval`, which is exactly
+// what the slow heartbeat does.
+test('attach never leaves the slot watch stopped', () => {
+    const src = source('../src/panel.js');
+    const start = src.indexOf('function attach()');
+    assert.notEqual(start, -1, 'attach() is there to read');
+    let depth = 0;
+    let i = src.indexOf('{', start);
+    const open = i;
+    do {
+        if (src[i] === '{') depth += 1;
+        else if (src[i] === '}') depth -= 1;
+        i += 1;
+    } while (depth > 0 && i < src.length);
+    const body = src.slice(open, i);
+
+    /*
+     * Detto come "solo `detach()` spegne la guardia", non come "dopo un
+     * clearInterval ce n'e' un setInterval vicino": la prima versione di
+     * questo controllo cercava un `setInterval` nei 200 caratteri seguenti e
+     * pescava quello che PIANIFICA il battito, in fondo ad `attach()`. Passava
+     * col difetto rimesso, che e' il solo modo di scoprire che un test non
+     * verifica quello che dice.
+     */
+    assert.doesNotMatch(body, /retryTimer\s*=\s*null/,
+        'only detach() may leave the slot watch stopped: inside attach() a '
+        + 'cleared interval has to be replaced, or a rebuilt slot never gets '
+        + 'the button back and the panel is gone for the session');
+    assert.match(body, /retryTimer\s*=\s*setInterval/, 'attach schedules the watch');
+    // And the slow heartbeat has to exist at all.
+    assert.match(src, /SLOT_WATCH_MS\s*=\s*\d+/, 'there is a resting cadence');
+});
