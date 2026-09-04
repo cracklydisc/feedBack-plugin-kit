@@ -13,6 +13,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import vm from 'node:vm';
 
 // ── a DOM small enough to keep honest ────────────────────────────────────
 
@@ -1646,4 +1647,58 @@ test('attach never leaves the slot watch stopped', () => {
     assert.match(body, /retryTimer\s*=\s*setInterval/, 'attach schedules the watch');
     // And the slow heartbeat has to exist at all.
     assert.match(src, /SLOT_WATCH_MS\s*=\s*\d+/, 'there is a resting cadence');
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// THE PLAYER IS NOT "OUTSIDE".
+//
+// The panel closed on any click that was not inside it or on its own button —
+// the ordinary popover rule — and the pause button at the bottom of the screen
+// is one of those clicks. So pausing closed the drill panel, and getting the
+// drill back in view meant reopening it from the rail and starting it over.
+// Every time. Reproduced by clicking `#btn-play` with the panel open.
+//
+// A popover closing when you look elsewhere is right. The play button is not
+// elsewhere: it is the same song whose state the panel is showing.
+//
+// The rule runs here rather than being pattern-matched in the source, because
+// twice today a source-shaped guard passed with the defect put back.
+test('a click on the player chrome does not dismiss the panel', () => {
+    const src = source('../src/panel.js');
+    const sig = 'function dismissesPanel';
+    const at = src.indexOf(sig);
+    assert.notEqual(at, -1, 'the rule is there to read');
+    let depth = 0;
+    let i = src.indexOf('{', at);
+    const open = i;
+    do {
+        if (src[i] === '{') depth += 1;
+        else if (src[i] === '}') depth -= 1;
+        i += 1;
+    } while (depth > 0 && i < src.length);
+
+    const SEL = '#player-controls, #v3-player-rail, .v3-transport, .v3-rail';
+    assert.ok(src.includes("const PLAYER_CHROME = '" + SEL + "'"),
+        'the chrome list still names the transport and the rail');
+
+    const sandbox = {};
+    vm.createContext(sandbox);
+    vm.runInContext(
+        "const PLAYER_CHROME = '" + SEL + "';" + '\n'
+        + src.slice(at, i) + '\n' + 'globalThis.go = dismissesPanel;', sandbox);
+    const go = sandbox.go;
+
+    const root = { contains: (t) => t === 'inside' };
+    const button = { contains: (t) => t === 'the-button' };
+    // A node that answers `closest` the way a child of the transport would.
+    const inChrome = { closest: (q) => (q === SEL ? {} : null) };
+    const elsewhere = { closest: () => null };
+
+    assert.equal(go('inside', root, button), false, 'inside the panel');
+    assert.equal(go('the-button', root, button), false, 'its own button');
+    assert.equal(go(inChrome, root, button), false, 'the transport, e.g. pause');
+    assert.equal(go(elsewhere, root, button), true, 'anywhere else still closes');
+    assert.equal(go(null, root, button), true, 'no target: close');
+    // A node with no `closest` — a text node, an older stub — must not throw.
+    assert.equal(go({}, root, button), true);
 });
