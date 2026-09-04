@@ -1702,3 +1702,49 @@ test('a click on the player chrome does not dismiss the panel', () => {
     // A node with no `closest` — a text node, an older stub — must not throw.
     assert.equal(go({}, root, button), true);
 });
+
+// ─────────────────────────────────────────────────────────────────────────
+// A PANEL SHOWING SOMETHING IN PROGRESS DOES NOT GET DISMISSED BY A STRAY
+// CLICK.
+//
+// A popover closes when you look elsewhere, and for a popover that is right.
+// A panel holding a running drill — its percentage coming down, its current
+// rung — is not a popover, it is a dial. A click that went astray on the
+// background made it vanish, and getting the drill back in front of you meant
+// reopening it from the rail, stopping and starting over: one distracted click
+// cost the session.
+//
+// So the gate covers only the accidental gestures, the outside click and
+// Escape. Every deliberate way out still works — `close()`, the panel's own
+// action, leaving the player — which is what keeps this from becoming a panel
+// nobody can close.
+test('canDismiss gates only the accidental ways out', () => {
+    const src = source('../src/panel.js');
+
+    // Both dismissal paths consult it, and nothing else does.
+    const doc = src.slice(src.indexOf('function onDocClick'), src.indexOf('close.addEventListener'));
+    assert.match(doc, /if \(!canDismiss\(\)\) return;/,
+        'the outside click asks first');
+    const key = src.slice(src.indexOf('function onKeydown'), src.indexOf('function onDocClick'));
+    assert.match(key, /if \(!canDismiss\(\)\) return;/, 'Escape asks first');
+
+    // The deliberate ways out do NOT: a panel you cannot close is worse than
+    // one that closes too eagerly.
+    const setOpenAt = src.indexOf('function setOpen(');
+    const setOpen = src.slice(setOpenAt, src.indexOf('function syncVisibility'));
+    assert.doesNotMatch(setOpen, /canDismiss/, 'close() is never blocked');
+    const sync = src.slice(src.indexOf('function syncVisibility'), src.indexOf('function canDismiss'));
+    assert.doesNotMatch(sync, /canDismiss/, 'leaving the player still closes it');
+
+    // And a consumer that does not pass one keeps the old behaviour, with a
+    // thrown predicate treated as "yes" rather than trapping the panel open.
+    const fn = src.slice(src.indexOf('function canDismiss'), src.indexOf('function onKeydown'));
+    const sandbox = { o: {} };
+    vm.createContext(sandbox);
+    vm.runInContext(fn + '\nglobalThis.ask = canDismiss;', sandbox);
+    assert.equal(sandbox.ask(), true, 'no predicate: dismissible');
+    sandbox.o.canDismiss = () => false;
+    assert.equal(sandbox.ask(), false);
+    sandbox.o.canDismiss = () => { throw new Error('nope'); };
+    assert.equal(sandbox.ask(), true, 'a throw must not trap the panel open');
+});
