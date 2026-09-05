@@ -17,6 +17,11 @@ plugin, since it is a plain file under `assets/`:
 http://localhost:8000/api/plugins/<id>/assets/gallery.html
 ```
 
+![Ogni componente del kit in ogni stato](docs/gallery.png)
+
+*`assets/gallery.html`, reso a 2x. Le due leve in alto sono quelle che provano
+le regole: No devices toglie glow, gradienti e ombre, Still ferma il moto.*
+
 ---
 
 ## Who uses it
