@@ -3,12 +3,12 @@
 The shared look and the shared plumbing for [fee[dB]ack](https://github.com/got-feedback)
 plugins. **Vendored, not depended on.**
 
-The rules it enforces are in **[DESIGN.md](DESIGN.md)** — that file is the point
+The rules it enforces are in **[DESIGN.md](DESIGN.md)**: that file is the point
 of this repository. The code just saves typing.
 
 And **[assets/gallery.html](assets/gallery.html)** is how you check the code
 against them: every component in every state on one page, with two buttons that
-prove what the prose can only assert — *No devices* strips the glow, the
+prove what the prose can only assert, *No devices* strips the glow, the
 gradient and the shadows the way a glow-less shop skin does, and *Still* kills
 the motion. Nothing may vanish under either. Serve it from any consuming
 plugin, since it is a plain file under `assets/`:
@@ -17,10 +17,11 @@ plugin, since it is a plain file under `assets/`:
 http://localhost:8000/api/plugins/<id>/assets/gallery.html
 ```
 
-![Ogni componente del kit in ogni stato](docs/gallery.png)
+![Every component in the kit, in every state](docs/gallery.png)
 
-*`assets/gallery.html`, reso a 2x. Le due leve in alto sono quelle che provano
-le regole: No devices toglie glow, gradienti e ombre, Still ferma il moto.*
+*`assets/gallery.html`, rendered at 2x. The two switches at the top are the
+ones that prove the rules: No devices strips the glow, the gradients and the
+shadows; Still kills the motion.*
 
 ---
 
@@ -29,7 +30,7 @@ le regole: No devices toglie glow, gradienti e ombre, Still ferma il moto.*
 | Plugin | What it draws with the kit |
 | --- | --- |
 | [Live Tab](https://github.com/cracklydisc/feedBack-plugin-livetab) | the in-player panel and the whole settings screen |
-| [Riff Repeater](https://github.com/cracklydisc/feedBack-plugin-riffrepeater) | the drill panel — racks, wells, steppers, the ladder rail, the footswitch — and its settings screen |
+| [Riff Repeater](https://github.com/cracklydisc/feedBack-plugin-riffrepeater) | the drill panel, racks, wells, steppers, the ladder rail, the footswitch, and its settings screen |
 
 Both carry their own copy under `src/kit/` and `assets/kit.css`. If you change
 something here, the plugins do not get it until somebody re-vendors it, and
@@ -43,13 +44,13 @@ Four plugins had each written the same things, differently:
 
 | | Where it was written | Cost |
 | --- | --- | --- |
-| the token bridge — read `feedBack.theme.get()`, write prefixed vars, follow `theme:changed`, gate reduced motion | `tidy/src/theme.js` 62 lines · `riffrepeater/src/theme.js` 65 lines · Live Tab's `ink()`/`inkOn()` building inline style strings | three times, three shapes |
+| the token bridge, read `feedBack.theme.get()`, write prefixed vars, follow `theme:changed`, gate reduced motion | `tidy/src/theme.js` 62 lines · `riffrepeater/src/theme.js` 65 lines · Live Tab's `ink()`/`inkOn()` building inline style strings | three times, three shapes |
 | the parked panel and its rail-slot button | `riffrepeater/src/ui/mount.js` 155 lines · Live Tab ~410 lines across `mountControls`/`panelCSS`/`repaintControls` | twice, one after two bug reports |
 | the settings-panel retry dance | `tidy/settings.html:98` and `riffrepeater/settings.html:231` | **identical line for line** |
 | the control taxonomy | Riff Repeater in CSS · Live Tab as `style.cssText` strings · Crate its own way | three languages for the same controls |
 
 And the same class of bug kept recurring in each of them. `Number(null)` is `0`
-and `0` passes `Number.isFinite`, so "absent" silently became "zero" — a stored
+and `0` passes `Number.isFinite`, so "absent" silently became "zero", a stored
 best of 0% on a never-measured passage, an accuracy band colouring red for
 "never played", a stepper jumping to its minimum when handed null. Four
 instances across two repositories. There is now one `num()` in
@@ -83,7 +84,7 @@ git subtree pull --prefix src/kit https://github.com/cracklydisc/feedBack-plugin
 ```
 
 Either way `assets/kit.css` has to be a real file in the plugin, because
-`install()` loads it from the **plugin's own** asset route — which is exactly
+`install()` loads it from the **plugin's own** asset route, which is exactly
 why there is no cross-plugin dependency to break.
 
 ## Using it
@@ -112,7 +113,7 @@ panel.body.appendChild(mode.el);
 mode.set('a');
 
 /*
- * Policy — what you set once and live with — goes in a fold, so it is in the
+ * Policy, what you set once and live with, goes in a fold, so it is in the
  * panel without being in its default view. The summary keeps the value
  * visible; DESIGN.md §15 says why that distinction matters more than it looks.
  */
@@ -140,7 +141,7 @@ A plugin manifest's `styles` takes one path, so keep declaring your own sheet;
 { "styles": "assets/myplugin.css", "scriptType": "module" }
 ```
 
-Bump the plugin's `version` whenever either stylesheet changes — both are
+Bump the plugin's `version` whenever either stylesheet changes, both are
 cache-busted with `?v=<version>`.
 
 ## What is in it
@@ -150,7 +151,7 @@ cache-busted with `?v=<version>`.
 | `DESIGN.md` | **the rules.** Read this one. Three parts: the foundations (the type, space and height scales), the twenty-three rules, and a component reference that says when *not* to use each class. §15 is the one worth reading first: how to spot a control that is in the wrong *tense*. §17 is why the height scale changes under a finger. |
 | `assets/gallery.html` | every component in every state, with the two degradation switches |
 | `src/theme.js` | the token bridge: host `--fb-*` roles → `--fbk-*` roles, plus the Layer 2 device recipes the host has proposed but not yet shipped |
-| `assets/kit.css` | the panel, the four control families, meters, badges, key caps. No literal colour, no literal glow, no literal gradient, **no literal measurement** — three tests read this file and enforce all of it |
+| `assets/kit.css` | the panel, the four control families, meters, badges, key caps. No literal colour, no literal glow, no literal gradient, **no literal measurement**: three tests read this file and enforce all of it |
 | `src/panel.js` | the parked panel and the button in the player's plugin-control slot |
 | `src/controls.js` | builders for the four families, plus `num()`, `band()`, readouts, meter rows and `fold()` |
 | `src/shortcuts.js` | `window.registerShortcut` with teardown, and `taken()` so you can check before choosing a key |
@@ -162,10 +163,10 @@ cache-busted with `?v=<version>`.
 node --test tests/*.test.js
 ```
 
-70 tests, no dependencies, no build step, no jsdom — the DOM the builders need
+70 tests, no dependencies, no build step, no jsdom, the DOM the builders need
 is a stub small enough to read. What is pinned is the logic: which control
 lights up for which state, that an absent number never colours as a failure,
-that a stepper cannot leave its bounds, and — by reading the source — that no
+that a stepper cannot leave its bounds, and, by reading the source, that no
 device is written as a literal and **no pixel value is off the scales**. That
 last one has an allowlist of the genuine geometry constants (a toggle's 13px
 knob in its 19px track), so adding one is a deliberate act rather than a
