@@ -19,6 +19,19 @@ http://localhost:8000/api/plugins/<id>/assets/gallery.html
 
 ---
 
+## Who uses it
+
+| Plugin | What it draws with the kit |
+| --- | --- |
+| [Live Tab](https://github.com/cracklydisc/feedBack-plugin-livetab) | the in-player panel and the whole settings screen |
+| [Riff Repeater](https://github.com/cracklydisc/feedBack-plugin-riffrepeater) | the drill panel — racks, wells, steppers, the ladder rail, the footswitch — and its settings screen |
+
+Both carry their own copy under `src/kit/` and `assets/kit.css`. If you change
+something here, the plugins do not get it until somebody re-vendors it, and
+that is deliberate: see below.
+
+---
+
 ## Why it exists
 
 Four plugins had each written the same things, differently:
